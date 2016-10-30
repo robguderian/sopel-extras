@@ -61,6 +61,7 @@ Dictionary:
 - .move [north/east/south/west] - move to the next room. If you are in combat,
   enemies get an opportunity attack on the team. You have a random chance of
   escaping based on the number of opponents in the room
+- .map - shows the map.
 - .attack - attack using whatever weapon you are holding.
 - .special - special attack, class-based.
 - .interact [item] - interact with an item you're holding, or that is in the
