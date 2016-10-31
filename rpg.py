@@ -93,7 +93,6 @@ class Map():
                 self.grid[i].append(MapCell(i, j))
         self.grid[start[0]][start[1]].start = True
         self.grid[end[0]][end[1]].end = True
-        self.visit_cell(start[0], start[1])
         # Make random door. Check if the map is possible
         # repeat until the map is possible
         while not self.check_possible():
@@ -136,6 +135,7 @@ class Map():
     Mark neighbours as known, this cell as visited
     '''
     def visit_cell(self, x, y):
+        self.grid[x][y].visited = True
         if self.grid[x][y].doorNorth:
             self.grid[x-1][y].known = True
         if self.grid[x][y].doorSouth:
@@ -167,6 +167,8 @@ class Map():
         else:
             bot.say("Can't move " + direction + ".")
         self.visit_cell(self.current_cell[0], self.current_cell[1])
+        c = self.get_current_cell()
+        bot.say(c.get_exits())
 
     '''
     check_possible - ensure map has path from start to finish
@@ -184,8 +186,6 @@ class Map():
         success = False
         while len(todo) > 0 and not success:
             cur = todo.pop()
-            # debug line vv
-            cur.visited = True
             seen.append(cur)
             if cur.end:
                 success = True
@@ -251,13 +251,28 @@ class MapCell():
     def get_icon(self):
         if self.start:
             return 's'
-        if self.end:
+        if self.end and self.visited:
             return 'e'
         if self.visited:
             return '.'
         if self.known:
             return '?'
         return ' '
+
+    def get_exits(self):
+        exits = []
+        if self.doorNorth:
+            exits.append('North')
+        if self.doorEast:
+            exits.append('East')
+        if self.doorSouth:
+            exits.append('South')
+        if self.doorWest:
+            exits.append('West')
+        if len(exits) == 1:
+            return 'You see an exit to the ' + ', '.join(exits) + '.'
+        if len(exits) > 1:
+            return 'You see exits to the ' + ', '.join(exits) + '.'
 
 @sopel.module.commands('startrpg')
 def startrpg(bot, trigger):
@@ -274,7 +289,7 @@ def startrpg(bot, trigger):
         bot.memory['map'] = Map(10, 10)
         bot.say('RPG now starting! Type .register to register for this game!')
         # end registration after a timeout (in seconds)
-        t = Timer(60, registration_end, args=[bot])
+        t = Timer(20, registration_end, args=[bot])
         t.start()
     else:
         # game is running... reply, or is that spammy?
@@ -288,6 +303,9 @@ def registration_end(bot):
         bot.say('Registration is now closed. Welcome, '
                 + ', '.join(bot.memory['players'].keys()) + '.')
         bot.memory['rpgstate'] = RPG_RUNNING
+        c = bot.memory['map'].get_current_cell()
+        bot.memory['map'].visit_cell(c.x, c.y)
+        bot.say(c.get_exits())
 
 @sopel.module.commands('register')
 def register(bot, trigger):
@@ -328,5 +346,25 @@ def bail(bot, trigger):
 def move(bot, trigger):
     if isrunning(bot) and bot.memory['gs'] == ROAMING:
         bot.memory['map'].try_move(bot, trigger.group(2))
-    # check to see if 
+    # check to see if there is enemies in this room.
+    # if so, go into BATTLE status
+    c = bot.memory['map'].get_current_cell()
+    if len(c.occupants) > 0:
+        bot.memory['gs'] = IN_BATTLE
+    else:
+        # if we escaped from a room, we may have to move from battle to roam
+        bot.memory['gs'] = ROAMING
+    # currently possible end state - you got to the end of the map, no
+    # monsters to fight.
+    # future, this might be possible if you can beat the end boss and leave
+    # the room? Probably impossible in the future.
+    if c.end and bot.memory['gs'] == ROAMING:
+        bot.say('You win! The end!')
+        bot.memory['rpgstate'] = RPG_OFF
+
+
+
+@sopel.module.commands('info')
+def info(bot, trigger):
+    bot.say(bot.memory['map'].get_current_cell().get_exits())
 
