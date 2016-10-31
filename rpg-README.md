@@ -52,6 +52,7 @@ Dictionary:
 - e - end
 - . - visited room
 - -, | and + - the frame to make it pretty
+- C - current room
 
 ## Commands
 

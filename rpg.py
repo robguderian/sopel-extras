@@ -1,6 +1,7 @@
 import sopel.module
 
 from threading import Timer
+import random
 
 '''
 RPG States
@@ -63,7 +64,7 @@ Holds information about this player.
 class player():
     def __init__(self, name):
         self.name = name
-        self.char= None
+        self.char = None
 
 '''
 Map classes
@@ -77,22 +78,175 @@ class Map():
         self.grid = []
         self.n = n
         self.m = m
+        # choose random start and end points
+        start = (random.randint(0, n-1),
+            random.randint(0, m-1))
+        self.current_cell = start
+        end = (random.randint(0, n-1),
+            random.randint(0, m-1))
+        while (start[0] == end[0] and start[1] == end[1]):
+            end = (random.randint(0, n-1),
+                random.randint(0, m-1))
         for i in range(0, n):
             self.grid.append([])
             for j in range(0, m):
-                self.grid[i].append(MapCell())
+                self.grid[i].append(MapCell(i, j))
+        self.grid[start[0]][start[1]].start = True
+        self.grid[end[0]][end[1]].end = True
+        self.visit_cell(start[0], start[1])
+        # Make random door. Check if the map is possible
+        # repeat until the map is possible
+        while not self.check_possible():
+            self.make_random_door()
+
+    '''
+    make_random_door
+
+    make a random door somewhere in the map.
+    '''
+    def make_random_door(self):
+        # key on a cell, then choose a random wall
+        # yes, the doors on a corner/wall cell have a higher probability
+        # whatever.
+        # deal with it.
+        cell = (random.randint(0, self.n - 1),
+                random.randint(0, self.m - 1))
+        # 0 = north
+        # 1 = east
+        # 2 = south
+        # 3 = west
+        d = random.randint(0, 3)
+        c = self.grid[cell[0]][cell[1]]
+        if d == 0 and c.x - 1 >= 0:
+            c.doorNorth = True
+            self.grid[cell[0] - 1][cell[1]].doorSouth = True
+        if d == 1 and c.y + 1 < self.m:
+            c.doorEast = True
+            self.grid[cell[0]][cell[1] + 1].doorWest = True
+        if d == 2 and c.x + 1 < self.n:
+            c.doorSouth = True
+            self.grid[cell[0] + 1][cell[1]].doorNorth = True
+        if d == 3 and c.y - 1 >= 0:
+            c.doorWest = True
+            self.grid[cell[0]][cell[1] - 1].doorEast = True
+
+    '''
+    Visit a cell, check neighbours.
+
+    Mark neighbours as known, this cell as visited
+    '''
+    def visit_cell(self, x, y):
+        if self.grid[x][y].doorNorth:
+            self.grid[x-1][y].known = True
+        if self.grid[x][y].doorSouth:
+            self.grid[x+1][y].known = True
+        if self.grid[x][y].doorEast:
+            self.grid[x][y+1].known = True
+        if self.grid[x][y].doorWest:
+            self.grid[x][y-1].known = True
+
+    def get_current_cell(self):
+        return self.grid[self.current_cell[0]][self.current_cell[1]]
+
+    '''
+    try move
+
+    Try a move, don't move and print error on failure
+    '''
+    def try_move(self, bot, direction):
+        d = direction.lower()
+        c = self.get_current_cell()
+        if d == 'south' and c.doorSouth:
+            self.current_cell = (c.x + 1, c.y)
+        elif d == 'north' and c.doorNorth:
+            self.current_cell = (c.y - 1, c.y)
+        elif d == 'east' and c.doorEast:
+            self.current_cell = (c.x, c.y + 1)
+        elif d == 'west' and c.doorWest:
+            self.current_cell = (c.x, c.y - 1)
+        else:
+            bot.say("Can't move " + direction + ".")
+        self.visit_cell(self.current_cell[0], self.current_cell[1])
+
+    '''
+    check_possible - ensure map has path from start to finish
+
+    Use a backtracking algorithm to make sure that there is a clear map
+    from start to finish.
+    '''
+    def check_possible(self):
+        # start from the start
+        # add all possible moves, that have not been visited
+        # pop the stack, add all possible moves...
+        c = self.get_current_cell()
+        seen = []
+        todo = [c]
+        success = False
+        while len(todo) > 0 and not success:
+            cur = todo.pop()
+            # debug line vv
+            cur.visited = True
+            seen.append(cur)
+            if cur.end:
+                success = True
+                print seen
+            if cur.doorNorth:
+                t = (self.grid[cur.x-1][cur.y])
+                if not t in seen and not t in todo:
+                    todo.append(t)
+            if cur.doorSouth:
+                t = (self.grid[cur.x+1][cur.y])
+                if not t in seen and not t in todo:
+                    todo.append(t)
+            if cur.doorEast:
+                t = (self.grid[cur.x][cur.y+1])
+                if not t in seen and not t in todo:
+                    todo.append(t)
+            if cur.doorWest:
+                t = (self.grid[cur.x][cur.y-1])
+                if not t in seen and not t in todo:
+                    todo.append(t)
+        return success
+
+    '''
+    print the map
+    '''
+    def print_map(self, bot):
+
+        def mapline():
+           s = "+"
+           for _ in range(0, self.n):
+                s+= "-"
+           s += '+'
+           return s
+
+        line = mapline()
+        bot.say(line)
+        for row in self.grid:
+            s = '|'
+            for col in row:
+                if (col.x == self.current_cell[0] and
+                        col.y == self.current_cell[1]):
+                    s += 'C'
+                else:
+                    s += col.get_icon()
+            s += '|'
+            bot.say(s)
+        bot.say(line)
 
 class MapCell():
-    def __init__(self):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
         self.visitable = True
         self.visited = False
         self.start = False
         self.end = False
-        self.known = True
-        self.doorNorth = True
-        self.doorEast = True
-        self.doorSouth = True
-        self.doorWest = True
+        self.known = False
+        self.doorNorth = False
+        self.doorEast = False
+        self.doorSouth = False
+        self.doorWest = False
         self.occupants = []
     def get_icon(self):
         if self.start:
@@ -156,26 +310,10 @@ def isrunning(bot):
             return True
     return False
 
-def mapline(mapinfo):
-   s = "+"
-   for _ in range(0, mapinfo.n):
-        s+= "-"
-   s += '+'
-   return s
-
 @sopel.module.commands('map')
 def showmap(bot, trigger):
     if isrunning(bot):
-        m = bot.memory['map']
-        line = mapline(m)
-        bot.say(line)
-        for row in m.grid:
-            s = '|'
-            for col in row:
-                 s += col.get_icon()
-            s += '|'
-            bot.say(s)
-        bot.say(line)
+        bot.memory['map'].print_map(bot)
 
 @sopel.module.commands('bail')
 def bail(bot, trigger):
@@ -185,3 +323,10 @@ def bail(bot, trigger):
             if len(bot.memory['players']) == 0:
                 bot.say('Everyone quit!')
                 bot.memory['rpgstate'] == RPG_OFF
+
+@sopel.module.commands('move')
+def move(bot, trigger):
+    if isrunning(bot) and bot.memory['gs'] == ROAMING:
+        bot.memory['map'].try_move(bot, trigger.group(2))
+    # check to see if 
+
