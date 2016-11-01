@@ -159,7 +159,7 @@ class Map():
         if d == 'south' and c.doorSouth:
             self.current_cell = (c.x + 1, c.y)
         elif d == 'north' and c.doorNorth:
-            self.current_cell = (c.y - 1, c.y)
+            self.current_cell = (c.x - 1, c.y)
         elif d == 'east' and c.doorEast:
             self.current_cell = (c.x, c.y + 1)
         elif d == 'west' and c.doorWest:
@@ -284,9 +284,9 @@ def startrpg(bot, trigger):
         # gs is game state
         bot.memory['gs'] = ROAMING
         # make an nxm grid. n and m are configurable (TODO)
-        bot.memory['x'] = 10
+        bot.memory['x'] = 4
         bot.memory['y'] = 10
-        bot.memory['map'] = Map(10, 10)
+        bot.memory['map'] = Map(4, 10)
         bot.say('RPG now starting! Type .register to register for this game!')
         # end registration after a timeout (in seconds)
         t = Timer(20, registration_end, args=[bot])
@@ -330,7 +330,7 @@ def isrunning(bot):
 
 @sopel.module.commands('map')
 def showmap(bot, trigger):
-    if isrunning(bot):
+    if isrunning(bot) and trigger.nick in bot.memory['players']:
         bot.memory['map'].print_map(bot)
 
 @sopel.module.commands('bail')
@@ -344,7 +344,9 @@ def bail(bot, trigger):
 
 @sopel.module.commands('move')
 def move(bot, trigger):
-    if isrunning(bot) and bot.memory['gs'] == ROAMING:
+    if (isrunning(bot)
+            and bot.memory['gs'] == ROAMING
+            and trigger.nick in bot.memory['players']:
         bot.memory['map'].try_move(bot, trigger.group(2))
     # check to see if there is enemies in this room.
     # if so, go into BATTLE status
@@ -361,8 +363,6 @@ def move(bot, trigger):
     if c.end and bot.memory['gs'] == ROAMING:
         bot.say('You win! The end!')
         bot.memory['rpgstate'] = RPG_OFF
-
-
 
 @sopel.module.commands('info')
 def info(bot, trigger):
