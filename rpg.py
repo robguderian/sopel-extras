@@ -307,6 +307,8 @@ class MapCell():
         self.features = []
         while random.random() > 0.8:
             self.features = random.sample(POSSIBLE_FEATURES, 1)
+            # instantiate them!
+            self.features = [f() for f in self.features]
 
     def set_start(self):
         self.start = True
@@ -390,14 +392,14 @@ class Feature():
 
     what happens when this feature is interacted with?
     '''
-    def getEffect():
+    def getEffect(self):
         pass
     '''
     get info - what is this feature
 
     when inspected, what do we know about this feature?
     '''
-    def getInfo():
+    def getInfo(self):
         pass
 
     '''
@@ -405,17 +407,17 @@ class Feature():
 
     Get a short name for this feature to add to a list
     '''
-    def getName():
+    def getName(self):
         pass
-    def __str__():
+    def __str__(self):
         return self.getName()
-    def __repr__():
+    def __repr__(self):
         return self.getName()
 
 class Fountain(Feature):
-    def getName():
+    def getName(self):
         return 'a burbling fountain'
-    def getInfo():
+    def getInfo(self):
         return 'A fountain sits undisturbed.'
 
 POSSIBLE_FEATURES = [Fountain]
