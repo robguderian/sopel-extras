@@ -138,7 +138,7 @@ class Map():
             self.grid.append([])
             for j in range(0, m):
                 self.grid[i].append(MapCell(i, j))
-        self.grid[start[0]][start[1]].start = True
+        self.grid[start[0]][start[1]].set_start()
         self.grid[end[0]][end[1]].end = True
         # Make random door. Check if the map is possible
         # repeat until the map is possible
@@ -262,7 +262,7 @@ class Map():
 
         def mapline():
            s = "+"
-           for _ in range(0, self.n):
+           for _ in range(0, self.m):
                 s+= "-"
            s += '+'
            return s
@@ -299,15 +299,18 @@ class MapCell():
         # exponential distributions are bursty. Most rooms will be empty
         # then some rooms will have many, few will have some.
         num_monsters = min(5, random.expovariate(0.5))
-        if not self.start:
-            for _ in range(0, random.randint(0,5)):
-                monstertype = random.choice(POSSIBLE_MONSTERS)
-                self.occupants.append(monstertype())
+        for _ in range(0, random.randint(0,5)):
+            monstertype = random.choice(POSSIBLE_MONSTERS)
+            self.occupants.append(monstertype())
         # choose some features.
         # set up that we could have more than one eventually.
         self.features = []
         while random.random() > 0.8:
             self.features = random.sample(POSSIBLE_FEATURES, 1)
+
+    def set_start(self):
+        self.start = True
+        self.occupants = []
 
     def get_icon(self):
         if self.start:
@@ -364,7 +367,7 @@ class MapCell():
             names = [x.name for x in self.occupants]
             Baddies = ['You meet ' + ', '.join(names)
                     + ". They don't look happy to meet you.",
-                    " You encounter " + str(len(self.occupants)) + "monsters."
+                    " You encounter " + str(len(self.occupants)) + " monsters."
                     + " They were having dinner, and you look like a good "
                     + "addition!"]
             return random.choice(Baddies)
@@ -481,9 +484,10 @@ def bail(bot, trigger):
     if isrunning(bot):
         if trigger.nick in bot.memory['players']:
             del bot.memory['players'][trigger.nick]
+            bot.say('Player ' + trigger.nick + ' quit.')
             if len(bot.memory['players']) == 0:
-                bot.say('Everyone quit!')
-                bot.memory['rpgstate'] == RPG_OFF
+                bot.say('Everyone quit! Game over!')
+                bot.memory['rpgstate'] = RPG_OFF
 
 @sopel.module.commands('move')
 def move(bot, trigger):
@@ -521,7 +525,7 @@ def attack(bot, trigger):
     pass
 
 @sopel.module.commands('special')
-def special(bot, trigger)
+def special(bot, trigger):
     if (isrunning(bot)
         and bot.memory['gs'] == IN_BATTLE
         and trigger.nick in bot.memory['players']):
