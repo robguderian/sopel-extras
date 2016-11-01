@@ -16,15 +16,17 @@ game states
 IN_BATTLE = 1
 ROAMING = 2
 
+
 '''
 Base class for character classes
 
-All character classes must inherit from this class.
+All character classes - that's playable and enemy classes -
+must inherit from this class.
 Sets defaults and standards, holds information about the character.
 '''
 class base_class():
     def __init__(self):
-        self.name = name
+        self.name = ''
         self.hp = 50
         self.mana = 0
         self.ac = 10
@@ -47,11 +49,48 @@ class base_class():
     def tryhit(self, attackroll):
         return attackroll >= self.ac
 
+    def __repr__(self):
+        return self.name
+    def __str__(self):
+        return self.name
 
 class figher_class(base_class):
-    def load():
+    def load(self):
         self.hp = 60
         self.ac = 13
+
+class ogre(base_class):
+    def load(self):
+        names = ['Zarg',
+                'Brirug',
+                'Urok',
+                'Blokurg',
+                'Erth',
+                'Krowugark',
+                'Grurugrok',
+                'Xegekork',
+                'Uikor',
+                'Braekig',
+                'Trurub',
+                'Egut',
+                'Kag',
+                'Klaruk',
+                'Kokork',
+                'Briuzug',
+                'Glaakor',
+                'Kliogrut',
+                'Meugut',
+                'Glibigrok']
+        self.name = random.choice(names) + ' the ogre'
+        self.hp = 4
+        self.mana = 0
+        self.ac = 10
+
+'''
+Possible monsters
+'''
+POSSIBLE_MONSTERS = [ogre]
+
 
 '''
 Player class
@@ -64,7 +103,15 @@ Holds information about this player.
 class player():
     def __init__(self, name):
         self.name = name
-        self.char = None
+
+'''
+class battle
+
+Holds information about the current battle
+'''
+class battle:
+    def __init__(self, cell, playerlist):
+        self.combatants = cell.occupants + playerlist.keys()
 
 '''
 Map classes
@@ -168,7 +215,7 @@ class Map():
             bot.say("Can't move " + direction + ".")
         self.visit_cell(self.current_cell[0], self.current_cell[1])
         c = self.get_current_cell()
-        bot.say(c.get_exits())
+        bot.say(c.describe())
 
     '''
     check_possible - ensure map has path from start to finish
@@ -248,6 +295,20 @@ class MapCell():
         self.doorSouth = False
         self.doorWest = False
         self.occupants = []
+        # make n random enemies in this room.
+        # exponential distributions are bursty. Most rooms will be empty
+        # then some rooms will have many, few will have some.
+        num_monsters = min(5, random.expovariate(0.5))
+        if not self.start:
+            for _ in range(0, random.randint(0,5)):
+                monstertype = random.choice(POSSIBLE_MONSTERS)
+                self.occupants.append(monstertype())
+        # choose some features.
+        # set up that we could have more than one eventually.
+        self.features = []
+        while random.random() > 0.8:
+            self.features = random.sample(POSSIBLE_FEATURES, 1)
+
     def get_icon(self):
         if self.start:
             return 's'
@@ -273,6 +334,88 @@ class MapCell():
             return 'You see an exit to the ' + ', '.join(exits) + '.'
         if len(exits) > 1:
             return 'You see exits to the ' + ', '.join(exits) + '.'
+
+    def get_features(self):
+        if len(self.features) > 0:
+            names = [x.getName() for x in self.features]
+            return 'You see a room with ' + ', '.join(names) + '.'
+        elif random.random > 0.7:
+            s = ['You see a boring room.']
+            return random.choice(s)
+        return None
+
+    def get_monsters(self):
+        if len(self.occupants) == 0:
+            if random.random > 0.6:
+                Nothing = ['The room is full of still, stale air.',
+                'The room is quiet.... too quiet.',
+                'Silence fills the room.'
+                'The only sound in the room is the sounds of your footsteps']
+                return random.choice(Nothing)
+            else:
+                return None
+        elif len(self.occupants) == 1:
+            name = self.occupants[0].name
+            Badguy = [name + " was having a nice quiet time, minding his own "
+                    + "business when you walked in.",
+                    "You woke " + name + " from a nap... prepare to pay!"]
+            return random.choice(Badguy)
+        else: # multiple monsters
+            names = [x.name for x in self.occupants]
+            Baddies = ['You meet ' + ', '.join(names)
+                    + ". They don't look happy to meet you.",
+                    " You encounter " + str(len(self.occupants)) + "monsters."
+                    + " They were having dinner, and you look like a good "
+                    + "addition!"]
+            return random.choice(Baddies)
+
+    def describe(self):
+
+        l = [self.get_features(), self.get_monsters(), self.get_exits()]
+        l = [x for x in l if x is not None]
+        return ' '.join(l)
+
+'''
+class feature - things that can appear in rooms. Features must inherit this
+class
+
+features can be interacted with, having positive, negative and no effects
+'''
+class Feature():
+    '''
+    get effect
+
+    what happens when this feature is interacted with?
+    '''
+    def getEffect():
+        pass
+    '''
+    get info - what is this feature
+
+    when inspected, what do we know about this feature?
+    '''
+    def getInfo():
+        pass
+
+    '''
+    getName
+
+    Get a short name for this feature to add to a list
+    '''
+    def getName():
+        pass
+    def __str__():
+        return self.getName()
+    def __repr__():
+        return self.getName()
+
+class Fountain(Feature):
+    def getName():
+        return 'a burbling fountain'
+    def getInfo():
+        return 'A fountain sits undisturbed.'
+
+POSSIBLE_FEATURES = [Fountain]
 
 @sopel.module.commands('startrpg')
 def startrpg(bot, trigger):
@@ -305,7 +448,7 @@ def registration_end(bot):
         bot.memory['rpgstate'] = RPG_RUNNING
         c = bot.memory['map'].get_current_cell()
         bot.memory['map'].visit_cell(c.x, c.y)
-        bot.say(c.get_exits())
+        bot.say(c.describe())
 
 @sopel.module.commands('register')
 def register(bot, trigger):
@@ -346,7 +489,7 @@ def bail(bot, trigger):
 def move(bot, trigger):
     if (isrunning(bot)
             and bot.memory['gs'] == ROAMING
-            and trigger.nick in bot.memory['players']:
+            and trigger.nick in bot.memory['players']):
         bot.memory['map'].try_move(bot, trigger.group(2))
     # check to see if there is enemies in this room.
     # if so, go into BATTLE status
@@ -366,5 +509,23 @@ def move(bot, trigger):
 
 @sopel.module.commands('info')
 def info(bot, trigger):
-    bot.say(bot.memory['map'].get_current_cell().get_exits())
+    bot.say(bot.memory['map'].get_current_cell().describe())
+
+@sopel.module.commands('attack')
+def attack(bot, trigger):
+    if (isrunning(bot)
+        and bot.memory['gs'] == IN_BATTLE
+        and trigger.nick in bot.memory['players']):
+        # now check that it is the user's turn
+        pass
+    pass
+
+@sopel.module.commands('special')
+def special(bot, trigger)
+    if (isrunning(bot)
+        and bot.memory['gs'] == IN_BATTLE
+        and trigger.nick in bot.memory['players']):
+        # now check that it is the user's turn
+        pass
+    pass
 
