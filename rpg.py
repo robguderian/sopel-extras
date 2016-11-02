@@ -45,6 +45,10 @@ class base_class():
         self.ac = 10
         self.initiative_mod = 0
 
+        # stats for special things
+        # agility for escaping
+        self.agility_mod = 5
+
         self.player = False
 
         self.load()
@@ -70,6 +74,9 @@ class base_class():
 
     def roll_initiative(self):
         return random.randint(1,20) + self.initiative_mod
+
+    def roll_agility(self):
+        return random.randint(1,20) + self.agility_mod
 
     def __repr__(self):
         return self.name
@@ -211,6 +218,7 @@ Holds information about the current battle
 '''
 class battle:
     def __init__(self, bot, cell, playerlist):
+        self.cell = cell
         players = [x.char for x in playerlist.values()]
         self.combatants = cell.occupants + players
         # do inititative rolls
@@ -245,6 +253,30 @@ class battle:
                 curr_fighter.do_turn(bot, self.combatants)
                 self.clean_list(bot)
                 self.next_turn(bot)
+    '''
+    Write the changes made during battle to memory
+    '''
+    def write_changes(self):
+        self.cell.occupants = []
+        for c in self.combatants:
+            if not c.player and c.hp > 0:
+                self.cell.occupants.append(c)
+
+
+
+
+    def count_baddies(self):
+        count = 0
+        for c in self.combatants:
+            if not c.player:
+                count += 1
+        return count
+
+    def try_escape(self, player):
+        # modify the difficulty based on the numnber of enemies
+        base_escape_difficulty = 15
+        return player.roll_agility() > (base_escape_difficulty +
+                                        self.count_baddies())
 
     def is_turn(self, name):
         return self.combatants[self.curr_turn].name == name
@@ -266,6 +298,19 @@ class battle:
             if not p.player:
                 enemy_count += 1
         return  enemy_count == 0
+
+    def op_attacks(self, bot):
+        good = []
+        bad = []
+        for c in self.combatants:
+            if c.player:
+                good.append(c)
+            else:
+                bad.append(c)
+
+        for b in bad:
+            b.do_turn(bot, good)
+
 
     def clean_list(self, bot):
         # announce the death of any combatants, clean up the list
@@ -366,9 +411,10 @@ class Map():
 
     Try a move, don't move and print error on failure
     '''
-    def try_move(self, bot, direction):
+    def try_move(self, bot, direction, describe = True):
         d = direction.lower()
         c = self.get_current_cell()
+        moved = True
         if d == 'south' and c.doorSouth:
             self.current_cell = (c.x + 1, c.y)
         elif d == 'north' and c.doorNorth:
@@ -379,9 +425,12 @@ class Map():
             self.current_cell = (c.x, c.y - 1)
         else:
             bot.say("Can't move " + direction + ".")
+            moved = False
         self.visit_cell(self.current_cell[0], self.current_cell[1])
-        c = self.get_current_cell()
-        bot.say(c.describe())
+        if describe:
+            c = self.get_current_cell()
+            bot.say(c.describe())
+        return moved
 
     '''
     check_possible - ensure map has path from start to finish
@@ -659,26 +708,54 @@ def bail(bot, trigger):
 
 @sopel.module.commands('move')
 def move(bot, trigger):
-    if (isrunning(bot)
-            and bot.memory['gs'] == ROAMING
+    if not isrunning(bot):
+        return
+    moved = False
+    if (bot.memory['gs'] == ROAMING
             and trigger.nick in bot.memory['players']):
-        bot.memory['map'].try_move(bot, trigger.group(2))
-    # check to see if there is enemies in this room.
-    # if so, go into BATTLE status
-    c = bot.memory['map'].get_current_cell()
-    if len(c.occupants) > 0:
-        bot.memory['gs'] = IN_BATTLE
-        bot.memory['battle'] = battle(bot, c, bot.memory['players'])
-    else:
-        # if we escaped from a room, we may have to move from battle to roam
-        bot.memory['gs'] = ROAMING
-    # currently possible end state - you got to the end of the map, no
-    # monsters to fight.
-    # future, this might be possible if you can beat the end boss and leave
-    # the room? Probably impossible in the future.
-    if c.end and bot.memory['gs'] == ROAMING:
-        bot.say('You win! The end!')
-        bot.memory['rpgstate'] = RPG_OFF
+        moved = bot.memory['map'].try_move(bot, trigger.group(2))
+    elif (bot.memory['gs'] == IN_BATTLE):
+        # don't check if a door exists. Justification: in battle, you
+        # might try to escape a wrong way. You would fail.
+        # first do an agility check
+        if bot.memory['battle'].is_turn(trigger.nick):
+            cur_player = bot.memory['players'][trigger.nick].char
+            if bot.memory['battle'].try_escape(cur_player):
+                moved = bot.memory['map'].try_move(bot, trigger.group(2),
+                        False)
+                if moved:
+                    # op attacks for all!
+                    bot.say('The monsters see an opportunity to attack '
+                            + 'while the team is running!')
+                    bot.memory['battle'].op_attacks(bot)
+                    bot.say('The team escapes!')
+                    bot.memory['battle'].write_changes()
+                    s = bot.memory['map'].get_current_cell().describe()
+                    bot.say(s)
+                else:
+                    bot.say('The team runs into the wall!')
+            else:
+                bot.say('The team fails to escape.')
+                bot.memory['battle'].next_turn(bot)
+
+
+    if moved:
+        # check to see if there is enemies in this room.
+        # if so, go into BATTLE status
+        c = bot.memory['map'].get_current_cell()
+        if len(c.occupants) > 0:
+            bot.memory['gs'] = IN_BATTLE
+            bot.memory['battle'] = battle(bot, c, bot.memory['players'])
+        else:
+            # if we escaped from a room, we may have to move from battle to roam
+            bot.memory['gs'] = ROAMING
+        # currently possible end state - you got to the end of the map, no
+        # monsters to fight.
+        # future, this might be possible if you can beat the end boss and leave
+        # the room? Probably impossible in the future.
+        if c.end and bot.memory['gs'] == ROAMING:
+            bot.say('You win! The end!')
+            bot.memory['rpgstate'] = RPG_OFF
 
 @sopel.module.commands('info')
 def info(bot, trigger):
