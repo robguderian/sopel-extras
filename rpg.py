@@ -18,6 +18,19 @@ ROAMING = 2
 
 
 '''
+attack object
+
+Attacks get rolled, the damage gets rolled immedately with it.
+Future: we could pass damage as a closure
+'''
+class attack:
+    def __init__(self, attack, dmg):
+        self.attack = attack
+        self.dmg = dmg
+        # TODO
+        # self.type =
+
+'''
 Base class for character classes
 
 All character classes - that's playable and enemy classes -
@@ -30,6 +43,9 @@ class base_class():
         self.hp = 50
         self.mana = 0
         self.ac = 10
+        self.initiative_mod = 0
+
+        self.player = False
 
         self.load()
 
@@ -46,20 +62,60 @@ class base_class():
     Special character classes like thief override this, adding dodge
     TODO: Add attack type?
     '''
-    def tryhit(self, attackroll):
-        return attackroll >= self.ac
+    def tryhit(self, attackobj):
+        return attackobj.attack >= self.ac
+
+    def hit(self, attackroll):
+        self.hp -= attackroll.dmg
+
+    def roll_initiative(self):
+        return random.randint(1,20) + self.initiative_mod
 
     def __repr__(self):
         return self.name
     def __str__(self):
         return self.name
 
+    '''
+    Do the basic attack for this character, returns an attack object
+    '''
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
+
 class figher_class(base_class):
     def load(self):
         self.hp = 60
         self.ac = 13
+        self.player = True
+        # todo
+        self.name = 'Fighter'
 
-class ogre(base_class):
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20) + 2
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
+class npc(base_class):
+    def do_turn(self, bot, occupants):
+        # choose random opponent, use base attack
+        to_attack = random.choice(occupants)
+        while not to_attack.player:
+            to_attack = random.choice(occupants)
+        the_attack = self.base_attack()
+        if to_attack.tryhit(the_attack):
+            bot.say(self.name + ' hit ' + to_attack.name + '!')
+            to_attack.hit(the_attack)
+        else:
+            bot.say(self.name + ' missed ' + to_attack.name + '!')
+
+class ogre(npc):
     def load(self):
         names = ['Zarg',
                 'Brirug',
@@ -86,10 +142,51 @@ class ogre(base_class):
         self.mana = 0
         self.ac = 10
 
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,6)
+        return attack(att, dmg)
+
+class imp(npc):
+    def load(self):
+        names = ['Chil',
+                'Zogro',
+                'Ekjit',
+                'Cyoq',
+                'Alnob',
+                'Truphet',
+                'Trur',
+                'Abqiuz',
+                'Gribjir',
+                'Cyox',
+                'Zir',
+                'Kyegmop',
+                'Uphem',
+                'Drom',
+                'Trabqa',
+                'Igban',
+                'Dip',
+                'Cyoklot',
+                'Bibjo',
+                'Cyor']
+        self.name = random.choice(names) + ' the imp'
+        self.hp = 2
+        self.mana = 0
+        self.ac = 12
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20) + 1
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
 '''
 Possible monsters
 '''
-POSSIBLE_MONSTERS = [ogre]
+POSSIBLE_MONSTERS = [ogre, imp]
 
 
 '''
@@ -103,6 +200,9 @@ Holds information about this player.
 class player():
     def __init__(self, name):
         self.name = name
+        # TODO
+        self.char = figher_class()
+        self.char.name = name
 
 '''
 class battle
@@ -110,8 +210,74 @@ class battle
 Holds information about the current battle
 '''
 class battle:
-    def __init__(self, cell, playerlist):
-        self.combatants = cell.occupants + playerlist.keys()
+    def __init__(self, bot, cell, playerlist):
+        players = [x.char for x in playerlist.values()]
+        self.combatants = cell.occupants + players
+        # do inititative rolls
+        self.init = [(x.roll_initiative(), x) for x in self.combatants]
+        self.init.sort(key= lambda tup: tup[0], reverse=False)
+        # now, sorted by initiative
+        self.combatants = [x[1] for x in self.init]
+        self.curr_turn = -1
+        names = [x.name for x in self.combatants]
+        bot.say('Fighters take initiative: ' + ', '.join(names) + ".")
+        self.next_turn(bot)
+
+    def next_turn(self, bot):
+        # check if it's over
+        if self.complete():
+            if self.won():
+                bot.say('The enemies have been vanquished')
+                c = bot.memory['map'].get_current_cell()
+                c.occupants = []
+                bot.memory['gs'] = ROAMING
+            else:
+                bot.say('All the team has died... game over')
+                bot.memory['gs'] = RPG_OFF
+        else:
+            self.curr_turn = (self.curr_turn + 1) % len(self.combatants)
+            curr_fighter = self.combatants[self.curr_turn]
+            if curr_fighter.player:
+                bot.say('Your turn, ' + curr_fighter.name + '.')
+            else:
+                # pass the whole list of occupants, in case the monster is
+                # confused. From there any of the occupants can be attacked.
+                curr_fighter.do_turn(bot, self.combatants)
+                self.clean_list(bot)
+                self.next_turn(bot)
+
+    def is_turn(self, name):
+        return self.combatants[self.curr_turn].name == name
+
+    def complete(self):
+        # all enemies, or all players are dead
+        player_count = 0
+        enemy_count = 0
+        for p in self.combatants:
+            if p.player:
+                player_count += 1
+            else:
+                enemy_count += 1
+        return player_count == 0 or enemy_count == 0
+
+    def won(self):
+        enemy_count = 0
+        for p in self.combatants:
+            if not p.player:
+                enemy_count += 1
+        return  enemy_count == 0
+
+    def clean_list(self, bot):
+        # announce the death of any combatants, clean up the list
+        # reminder: more than one may have died.
+        # the index must be decremented for every death that's under the
+        # pointer index
+        for f in self.combatants:
+            if f.hp <= 0:
+                bot.say(f.name + ' has died.')
+                if self.combatants.index(f) <= self.curr_turn:
+                    self.curr_turn -= 1
+                self.combatants.remove(f)
 
 '''
 Map classes
@@ -462,7 +628,7 @@ def register(bot, trigger):
         return
     # see if they are already registered
     if trigger.nick not in bot.memory['players']:
-        bot.memory['players'][trigger.nick] = None
+        bot.memory['players'][trigger.nick] = player(trigger.nick)
         bot.say(trigger.nick + ' is now registered.')
 
 '''
@@ -502,6 +668,7 @@ def move(bot, trigger):
     c = bot.memory['map'].get_current_cell()
     if len(c.occupants) > 0:
         bot.memory['gs'] = IN_BATTLE
+        bot.memory['battle'] = battle(bot, c, bot.memory['players'])
     else:
         # if we escaped from a room, we may have to move from battle to roam
         bot.memory['gs'] = ROAMING
@@ -518,13 +685,24 @@ def info(bot, trigger):
     bot.say(bot.memory['map'].get_current_cell().describe())
 
 @sopel.module.commands('attack')
-def attack(bot, trigger):
+def do_attack(bot, trigger):
     if (isrunning(bot)
-        and bot.memory['gs'] == IN_BATTLE
-        and trigger.nick in bot.memory['players']):
+            and bot.memory['gs'] == IN_BATTLE
+            and trigger.nick in bot.memory['players']):
         # now check that it is the user's turn
-        pass
-    pass
+        if bot.memory['battle'].is_turn(trigger.nick):
+            att = bot.memory['players'][trigger.nick].char.base_attack()
+            c = bot.memory['map'].get_current_cell()
+            to_attack = random.choice(c.occupants)
+            while to_attack.player:
+                to_attack = random.choice(c.occupants)
+            if to_attack.tryhit(att):
+                bot.say(trigger.nick + ' hit ' + to_attack.name + '.')
+                to_attack.hit(att)
+            else:
+                bot.say(trigger.nick + ' missed ' + to_attack.name + '.')
+            bot.memory['battle'].clean_list(bot)
+            bot.memory['battle'].next_turn(bot)
 
 @sopel.module.commands('special')
 def special(bot, trigger):
