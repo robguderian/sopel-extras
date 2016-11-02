@@ -233,7 +233,7 @@ class battle:
                 bot.memory['gs'] = ROAMING
             else:
                 bot.say('All the team has died... game over')
-                bot.memory['gs'] = RPG_OFF
+                bot.memory['rpgstate'] = RPG_OFF
         else:
             self.curr_turn = (self.curr_turn + 1) % len(self.combatants)
             curr_fighter = self.combatants[self.curr_turn]
