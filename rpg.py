@@ -117,6 +117,18 @@ class figher_class(base_class):
         dmg = random.randint(1,4)
         return attack(att, dmg)
 
+    def special_attack(self, bot, target_str=None):
+        bot.say(self.name + " charges at the monsters, slashing wildly.")
+        battle = bot.memory['battle']
+        for f in battle.get_baddies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,6) )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+        battle.clean_list(bot)
+        battle.next_turn(bot)
+
 class npc(base_class):
     def do_turn(self, bot, occupants):
         # choose random opponent, use base attack
@@ -308,6 +320,8 @@ class battle:
 
     def next_turn(self, bot):
         # check if it's over
+        # did people die in the last attack?
+        self.clean_list(bot)
         if self.complete():
             if self.won():
                 bot.say('The enemies have been vanquished')
@@ -337,15 +351,19 @@ class battle:
             if not c.player and c.hp > 0:
                 self.cell.occupants.append(c)
 
-
-
-
     def count_baddies(self):
         count = 0
         for c in self.combatants:
             if not c.player:
                 count += 1
         return count
+
+    def get_baddies(self):
+        baddies = []
+        for c in self.combatants:
+            if not c.player:
+                baddies.append(c)
+        return baddies
 
     def try_escape(self, player):
         # modify the difficulty based on the numnber of enemies
@@ -789,8 +807,7 @@ def move(bot, trigger):
     if (bot.memory['gs'] == ROAMING
             and trigger.nick in bot.memory['players']):
         moved = bot.memory['map'].try_move(bot, trigger.group(2))
-    pass
-    elif (bot.memory['gs'] == IN_BATTLE):
+    elif bot.memory['gs'] == IN_BATTLE:
         # don't check if a door exists. Justification: in battle, you
         # might try to escape a wrong way. You would fail.
         # first do an agility check
@@ -867,9 +884,9 @@ def do_special(bot, trigger):
             if bot.memory['battle'].is_turn(trigger.nick):
                 # pass in the bot. From there we can ge
                 # all the values we need
-                if len(trigger.groups) >= 2:
-                    bot.memory['players'][trigger.nick].special_attack(bot,
-                        trigger.group(2))
+                if len(trigger.groups()) >= 2:
+                    bot.memory['players'][trigger.nick].char.special_attack(
+                        bot, trigger.group(2))
                 else:
                     bot.memory['players'][trigger.nick].special_attack(bot)
 
