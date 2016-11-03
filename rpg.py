@@ -93,6 +93,14 @@ class base_class():
         dmg = random.randint(1,4)
         return attack(att, dmg)
 
+    '''
+    do a special attack
+
+    The user may specify a target (focused attack vs AOE)
+    '''
+    def special_attack(self, bot, target_str=None):
+        pass
+
 
 class figher_class(base_class):
     def load(self):
@@ -260,7 +268,7 @@ class troll(npc):
 '''
 Possible monsters
 '''
-POSSIBLE_MONSTERS = [ogre, imp]
+POSSIBLE_MONSTERS = [ogre, imp, troll, goblin]
 
 
 '''
@@ -781,6 +789,7 @@ def move(bot, trigger):
     if (bot.memory['gs'] == ROAMING
             and trigger.nick in bot.memory['players']):
         moved = bot.memory['map'].try_move(bot, trigger.group(2))
+    pass
     elif (bot.memory['gs'] == IN_BATTLE):
         # don't check if a door exists. Justification: in battle, you
         # might try to escape a wrong way. You would fail.
@@ -839,6 +848,7 @@ def do_attack(bot, trigger):
             c = bot.memory['map'].get_current_cell()
             to_attack = random.choice(c.occupants)
             while to_attack.player:
+                # TODO - be able to choose attackee
                 to_attack = random.choice(c.occupants)
             if to_attack.tryhit(att):
                 bot.say(trigger.nick + ' hit ' + to_attack.name + '.')
@@ -849,11 +859,17 @@ def do_attack(bot, trigger):
             bot.memory['battle'].next_turn(bot)
 
 @sopel.module.commands('special')
-def special(bot, trigger):
+def do_special(bot, trigger):
     if (isrunning(bot)
         and bot.memory['gs'] == IN_BATTLE
         and trigger.nick in bot.memory['players']):
         # now check that it is the user's turn
-        pass
-    pass
+            if bot.memory['battle'].is_turn(trigger.nick):
+                # pass in the bot. From there we can ge
+                # all the values we need
+                if len(trigger.groups) >= 2:
+                    bot.memory['players'][trigger.nick].special_attack(bot,
+                        trigger.group(2))
+                else:
+                    bot.memory['players'][trigger.nick].special_attack(bot)
 
