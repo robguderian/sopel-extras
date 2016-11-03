@@ -190,6 +190,73 @@ class imp(npc):
         dmg = random.randint(1,4)
         return attack(att, dmg)
 
+class goblin(npc):
+    def load(self):
+        names = ['Zriabs',
+                'Plaq',
+                'Crierd',
+                'Vrord',
+                'Striag',
+                'Clirkog',
+                'Komild',
+                'Hieltial',
+                'Vreelseakx',
+                'Clelvakt',
+                'Lielk',
+                'Piolb',
+                'Krard',
+                'Greek',
+                'Kaz',
+                'Gnoilruct',
+                'Brezlug',
+                'Zadyct',
+                'Cakneabs',
+                'Briozeez']
+        self.name = random.choice(names) + ' the goblin'
+        self.hp = 3
+        self.mana = 0
+        self.ac = 10
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20) + 1
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
+class troll(npc):
+    def load(self):
+        names = ['Makas',
+                'Mohanlal',
+                'Venjo',
+                'Razi',
+                'Zulrajas',
+                'Mohanlal',
+                'Tazingo',
+                'Jaryaya',
+                'Melkree',
+                'Jojin',
+                'Matuna',
+                'Hamedi',
+                'Ugoki',
+                'Shengis',
+                'Trezzahn',
+                'Shaktilar',
+                'Halasuwa',
+                'Tedar']
+        self.name = random.choice(names) + ' the troll'
+        self.hp = 10
+        self.mana = 0
+        self.ac = 7
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
+
 '''
 Possible monsters
 '''
