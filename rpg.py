@@ -40,6 +40,7 @@ Sets defaults and standards, holds information about the character.
 class base_class():
     def __init__(self):
         self.name = ''
+        self.maxhp = 50
         self.hp = 50
         self.mana = 0
         self.ac = 10
@@ -102,9 +103,10 @@ class base_class():
         pass
 
 
-class figher_class(base_class):
+class fighter_class(base_class):
     def load(self):
-        self.hp = 60
+        self.maxhp = 60
+        self.hp = self.maxhp
         self.ac = 13
         self.player = True
         # todo
@@ -114,7 +116,7 @@ class figher_class(base_class):
         # base attack, 1d20
         att = random.randint(1,20) + 2
         # base damage, 1d4
-        dmg = random.randint(1,4)
+        dmg = random.randint(1,6)
         return attack(att, dmg)
 
     def special_attack(self, bot, target_str=None):
@@ -122,12 +124,81 @@ class figher_class(base_class):
         battle = bot.memory['battle']
         for f in battle.get_baddies():
             att = attack( random.randint(1,20) + 4,
-                          random.randint(1,6) )
+                          random.randint(1,4) + 1 )
             if f.tryhit(att):
                 bot.say(self.name + ' hit ' + f.name + '!')
                 f.hit(att)
         battle.clean_list(bot)
         battle.next_turn(bot)
+
+    @classmethod
+    def classname(cls):
+        return 'Fighter'
+
+class healer_class(base_class):
+    def load(self):
+        self.maxhp = 50
+        self.hp = self.maxhp
+        self.ac = 12
+        self.player = True
+        # todo
+        self.name = 'Healer'
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20) + 0
+        # base damage, 1d4
+        dmg = random.randint(1,4)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        # TODO - add targeted healing
+        bot.say(self.name + " heals the team.")
+        players = bot.memory['players']
+        for p in players.values():
+            gains = random.randint(1,10) + 2
+            p.char.hp += gains
+            bot.say(p.name + ' gains ' + str(gains) + ' hp, to '
+                    + str(p.char.hp) + '.')
+        bot.memory['battle'].next_turn(bot)
+
+    @classmethod
+    def classname(cls):
+        return 'Healer'
+class mage_class(base_class):
+    def load(self):
+        self.maxhp = 40
+        self.hp = self.maxhp
+        self.ac = 12
+        self.player = True
+        # todo
+        self.name = 'mage'
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20) + 5
+        # base damage, 1d4
+        dmg = random.randint(1,10)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        bot.say(self.name + " calls fire from the floor.")
+        battle = bot.memory['battle']
+        for f in battle.get_baddies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,8) + 1 )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+        battle.clean_list(bot)
+        battle.next_turn(bot)
+
+    @classmethod
+    def classname(cls):
+        return 'Mage'
+
+
+POSSIBLE_PLAYER_CLASSES = [fighter_class, healer_class, mage_class]
 
 class npc(base_class):
     def do_turn(self, bot, occupants):
@@ -292,10 +363,14 @@ Holds information about this player.
 - more?
 '''
 class player():
-    def __init__(self, name):
+    def __init__(self, name, chosentype = None):
         self.name = name
         # TODO
-        self.char = figher_class()
+        if chosentype is None:
+            c = random.choice(POSSIBLE_PLAYER_CLASSES)
+            self.char = c()
+        else:
+            self.char = chosentype
         self.char.name = name
 
 '''
@@ -735,6 +810,8 @@ def startrpg(bot, trigger):
     if ((bot.memory.contains('rpgstate') and bot.memory['rpgstate'] == RPG_OFF)
             or not bot.memory.contains('rpgstate')):
         bot.memory['rpgstate'] = RPG_REGISTER
+        bot.say('RPG now starting!')
+        bot.say('Building the world...')
         # make a new player list
         bot.memory['players'] = {}
         # gs is game state
@@ -743,7 +820,7 @@ def startrpg(bot, trigger):
         bot.memory['x'] = 4
         bot.memory['y'] = 10
         bot.memory['map'] = Map(4, 10)
-        bot.say('RPG now starting! Type .register to register for this game!')
+        bot.say('Type .register to register for this game.')
         # end registration after a timeout (in seconds)
         t = Timer(20, registration_end, args=[bot])
         t.start()
@@ -770,8 +847,27 @@ def register(bot, trigger):
         return
     # see if they are already registered
     if trigger.nick not in bot.memory['players']:
-        bot.memory['players'][trigger.nick] = player(trigger.nick)
-        bot.say(trigger.nick + ' is now registered.')
+        if trigger.group(2) is not None and len(trigger.group(2)) >= 0:
+            chosen = trigger.group(2)
+            chosentype = None
+            classlist = []
+            for classtype in POSSIBLE_PLAYER_CLASSES:
+                if classtype.classname().lower() == chosen.lower():
+                    chosentype = classtype()
+            if chosentype is None:
+                bot.say(chosen + ' is not a valid type. Possible types '
+                        + 'are ' + ', '.join(classlist) + '.')
+            else:
+                bot.say(trigger.nick + ' is now registered as a '
+                    + chosentype.classname() + '.')
+                bot.memory['players'][trigger.nick] = player(trigger.nick,
+                        chosentype)
+
+        else:
+            bot.memory['players'][trigger.nick] = player(trigger.nick)
+            bot.say(trigger.nick + ' is now registered as a '
+                    + bot.memory['players'][trigger.nick].char.classname()
+                    + '.')
 
 '''
 isrunning helper function
@@ -890,3 +986,15 @@ def do_special(bot, trigger):
                 else:
                     bot.memory['players'][trigger.nick].special_attack(bot)
 
+@sopel.module.commands('status')
+def do_status(bot, trigger):
+    if not isrunning(bot):
+        return
+    if not trigger.nick in bot.memory['players']:
+        return
+    import pdb; pdb.set_trace()
+    for p in bot.memory['players'].values():
+        bot.say(p.name + ': ' + str(p.char.hp) + '/' + str(p.char.maxhp)
+                + 'hp, '
+                + str(p.char.mana) + 'mp. '
+                + ' You are a ' + p.char.classname() + '.')
