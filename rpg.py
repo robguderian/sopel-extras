@@ -79,6 +79,19 @@ class base_class():
     def roll_agility(self):
         return random.randint(1,20) + self.agility_mod
 
+    def addHP(self, amt, in_combat = False):
+        if in_combat:
+            self.hp += amt
+        else:
+            self.hp = min(self.hp + amt, self.maxhp)
+
+    def subHP(self, amt, in_combat = False):
+        self.hp -= amt
+        if self.hp < 0:
+            # check the game state, clean the initiative list if need be.
+            if bot.memory['gs'] == IN_BATTLE:
+                battle = bot.memory['battle'].clean_list()
+
     def __repr__(self):
         return self.name
     def __str__(self):
@@ -688,7 +701,7 @@ class MapCell():
         # choose some features.
         # set up that we could have more than one eventually.
         self.features = []
-        while random.random() > 0.8:
+        while random.random() > 0.5:
             self.features = random.sample(POSSIBLE_FEATURES, 1)
             # instantiate them!
             self.features = [f() for f in self.features]
@@ -774,8 +787,13 @@ class Feature():
     get effect
 
     what happens when this feature is interacted with?
+    Passing in bot, we can see which player did the interaction, get the team,
+    see if there are baddies, etc.
+    Depending on the feature, the
+    effect could be player-specific, or team-specific (or a random choice of
+    the team, or everyone who didn't touch the feature, or....)
     '''
-    def getEffect(self):
+    def getEffect(self, bot):
         pass
     '''
     get info - what is this feature
@@ -803,7 +821,55 @@ class Fountain(Feature):
     def getInfo(self):
         return 'A fountain sits undisturbed.'
 
-POSSIBLE_FEATURES = [Fountain]
+class GoodFountain(Fountain):
+    def __init__(self):
+        self.used = False
+
+    def getEffect(self, bot):
+        if self.used:
+            bot.say('You get wet.')
+        else:
+            self.used = True
+            team = bot.memory['players'].values()
+            bot.say('The team feels a warm tingling...')
+            in_combat = bot.memory['gs'] == IN_BATTLE
+            for p in team:
+                amt = random.randint(1,10)
+                bot.say(p.name + ' receives ' + amt + 'hp.')
+                p.addHP(amt, in_combat)
+
+    def getInfo(self):
+        if self.used:
+            return 'A blackened fountain'
+        else:
+            return 'A fountain sits undisturbed.'
+
+class BadFountain(Fountain):
+    def __init__(self):
+        self.used = False
+
+    def getEffect(self, bot):
+        if self.used:
+            bot.say('You get wet.')
+        else:
+            self.used = True
+            team = bot.memory['players'].values()
+            bot.say('The team feels a warm tingling... no... hot... too hot!')
+            in_combat = bot.memory['gs'] == IN_BATTLE
+            for p in team:
+                amt = random.randint(1,6)
+                bot.say(p.name + ' loses ' + amt + 'hp.')
+                p.subHP(amt, in_combat)
+                if p.hp < 0:
+                    bot.say(p.name +' dies.')
+
+    def getInfo(self):
+        if self.used:
+            return 'A blackened fountain'
+        else:
+            return 'A fountain sits undisturbed.'
+
+POSSIBLE_FEATURES = [GoodFountain, BadFountain]
 
 @sopel.module.commands('startrpg')
 def startrpg(bot, trigger):
