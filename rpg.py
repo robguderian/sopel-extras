@@ -52,6 +52,8 @@ class base_class():
 
         self.player = False
 
+        self.items = []
+
         self.load()
 
     '''
@@ -92,6 +94,9 @@ class base_class():
             if bot.memory['gs'] == IN_BATTLE:
                 battle = bot.memory['battle'].clean_list()
 
+    def item_list(self):
+        return [str(v) for v in self.items]
+
     def __repr__(self):
         return self.name
     def __str__(self):
@@ -124,6 +129,7 @@ class fighter_class(base_class):
         self.player = True
         # todo
         self.name = 'Fighter'
+        self.items = [Potion(), Potion(), Potion()]
 
     def base_attack(self):
         # base attack, 1d20
@@ -186,6 +192,7 @@ class mage_class(base_class):
         self.player = True
         # todo
         self.name = 'mage'
+        self.items = [Potion(), Potion()]
 
     def base_attack(self):
         # base attack, 1d20
@@ -405,6 +412,9 @@ class battle:
         names = [x.name for x in self.combatants]
         bot.say('Fighters take initiative: ' + ', '.join(names) + ".")
         self.next_turn(bot)
+
+    def current_turn(self):
+        return self.combatant[self.curr_turn]
 
     def next_turn(self, bot):
         # check if it's over
@@ -750,8 +760,8 @@ class MapCell():
             if random.random > 0.6:
                 Nothing = ['The room is full of still, stale air.',
                 'The room is quiet.... too quiet.',
-                'Silence fills the room.'
-                'The only sound in the room is the sounds of your footsteps']
+                'Silence fills the room.',
+                'The only sound in the room is the sounds of your footsteps.']
                 return random.choice(Nothing)
             else:
                 return None
@@ -793,7 +803,7 @@ class Feature():
     effect could be player-specific, or team-specific (or a random choice of
     the team, or everyone who didn't touch the feature, or....)
     '''
-    def getEffect(self, bot):
+    def getEffect(self, bot, player):
         pass
     '''
     get info - what is this feature
@@ -825,7 +835,7 @@ class GoodFountain(Fountain):
     def __init__(self):
         self.used = False
 
-    def getEffect(self, bot):
+    def getEffect(self, bot, player):
         if self.used:
             bot.say('You get wet.')
         else:
@@ -848,7 +858,7 @@ class BadFountain(Fountain):
     def __init__(self):
         self.used = False
 
-    def getEffect(self, bot):
+    def getEffect(self, bot, player):
         if self.used:
             bot.say('You get wet.')
         else:
@@ -869,7 +879,51 @@ class BadFountain(Fountain):
         else:
             return 'A fountain sits undisturbed.'
 
-POSSIBLE_FEATURES = [GoodFountain, BadFountain]
+class LooseBrick(Fountain):
+    def __init__(self):
+        # choose a random item
+        possible_items = POSSIBLE_ITEMS
+        possible_items.append(None)
+        self.item = random.choice(possible_items)
+
+    def getEffect(self, bot, player):
+        if self.item is not None:
+            # the current player gets the item
+            bot.say(player.name + ' gets a ' + self.item.getName() + '.')
+            player.items.append(item)
+        else:
+            bot.say('You find spiderwebs and dust')
+
+POSSIBLE_FEATURES = [GoodFountain, BadFountain, LooseBrick]
+
+class Item:
+    def __init__(self):
+        self.name = 'name me!'
+
+    def use(self, bot, player):
+        pass
+
+    def getName(self):
+        return self.name
+
+    def __str__(self):
+        return self.getName()
+
+    def __repr__(self):
+        return self.getName()
+
+class Potion(Item):
+    def __init__(self):
+        amts = [20, 30, 50]
+        self.fill_amt = random.choice(amts)
+        self.name = 'potion'
+
+    def use(self, bot, player):
+        bot.say(player.name + ' uses a potion and gets ' + str(self.fill_amt)
+                + 'hp.')
+        player.addHP(self.fill_amt)
+
+POSSIBLE_ITEMS = [Potion]
 
 @sopel.module.commands('startrpg')
 def startrpg(bot, trigger):
@@ -1060,10 +1114,16 @@ def do_status(bot, trigger):
     if not trigger.nick in bot.memory['players']:
         return
     for p in bot.memory['players'].values():
+        itemtxt = 'Current items: ' + ', '.join(p.char.item_list()) + '.'
+        if len(p.char.items) == 0:
+            'No items.'
         bot.say(p.name + ': ' + str(p.char.hp) + '/' + str(p.char.maxhp)
                 + 'hp, '
                 + str(p.char.mana) + 'mp. '
-                + ' You are a ' + p.char.classname() + '.')
+                + ' You are a ' + p.char.classname() + '. ' + itemtxt)
+    if bot.memory['gs'] == IN_BATTLE:
+        bot.say('You are currently in battle, current turn: '
+                + bot.memory['battle'].current_turn().name + '.')
 
 @sopel.module.commands('interact')
 def do_interact(bot, trigger):
@@ -1075,20 +1135,42 @@ def do_interact(bot, trigger):
     # if there is only one feature, just interact with it, without bothering
     # to check what the player typed
     cell = bot.memory['map'].get_current_cell()
+    player = bot.memory['players'][trigger.nick].char
     if len(cell.features) == 0:
         bot.say('No features to check out. You pretend you were doing '
                 + 'something else, other than looking at the blank wall.')
     elif len(cell.features) == 1:
-        cell.features[0].getEffect(bot)
+        cell.features[0].getEffect(bot, player)
     else:
         found = False
         feature_names = []
         for f in cell.features:
             feature_names.append(f.getName())
             if f.getName() == trigger.group(2):
-                f.getEffect(bot)
+                f.getEffect(bot, player)
                 break
         if not found:
             bot.say('No feature named ' + trigger.group(2) + '.')
             bot.say('Possible features: ' + ', '.join(feature_names) + '.')
+
+@sopel.module.commands('use')
+def do_use(bot, trigger):
+    if not isrunning(bot):
+        return
+    if not trigger.nick in bot.memory['players']:
+        return
+    player = bot.memory['players'][trigger.nick].char
+    item_names = []
+    found = False
+    for i in player.items:
+        item_names.append(i.getName())
+        if i.getName() == trigger.group(2):
+            i.use(bot, player)
+            player.items.remove(i)
+            found = True
+            break
+    if not found:
+        bot.say(trigger.nick + ' does not have a ' + trigger.group(2)
+                + '. Possibilities are ' + ', '.join(player.item_list())
+                + '.')
 
