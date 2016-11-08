@@ -835,8 +835,8 @@ class GoodFountain(Fountain):
             in_combat = bot.memory['gs'] == IN_BATTLE
             for p in team:
                 amt = random.randint(1,10)
-                bot.say(p.name + ' receives ' + amt + 'hp.')
-                p.addHP(amt, in_combat)
+                bot.say(p.name + ' receives ' + str(amt) + 'hp.')
+                p.char.addHP(amt, in_combat)
 
     def getInfo(self):
         if self.used:
@@ -858,8 +858,8 @@ class BadFountain(Fountain):
             in_combat = bot.memory['gs'] == IN_BATTLE
             for p in team:
                 amt = random.randint(1,6)
-                bot.say(p.name + ' loses ' + amt + 'hp.')
-                p.subHP(amt, in_combat)
+                bot.say(p.name + ' loses ' + str(amt) + 'hp.')
+                p.char.subHP(amt, in_combat)
                 if p.hp < 0:
                     bot.say(p.name +' dies.')
 
@@ -1022,10 +1022,11 @@ def do_attack(bot, trigger):
             and bot.memory['gs'] == IN_BATTLE
             and trigger.nick in bot.memory['players']):
         # now check that it is the user's turn
-        if bot.memory['battle'].is_turn(trigger.nick):
+        cur_battle = bot.memory['battle']
+        if cur_battle.is_turn(trigger.nick):
             att = bot.memory['players'][trigger.nick].char.base_attack()
             c = bot.memory['map'].get_current_cell()
-            to_attack = random.choice(c.occupants)
+            to_attack = random.choice(cur_battle.get_baddies())
             while to_attack.player:
                 # TODO - be able to choose attackee
                 to_attack = random.choice(c.occupants)
@@ -1034,8 +1035,8 @@ def do_attack(bot, trigger):
                 to_attack.hit(att)
             else:
                 bot.say(trigger.nick + ' missed ' + to_attack.name + '.')
-            bot.memory['battle'].clean_list(bot)
-            bot.memory['battle'].next_turn(bot)
+            cur_battle.clean_list(bot)
+            cur_battle.next_turn(bot)
 
 @sopel.module.commands('special')
 def do_special(bot, trigger):
@@ -1058,9 +1059,36 @@ def do_status(bot, trigger):
         return
     if not trigger.nick in bot.memory['players']:
         return
-    import pdb; pdb.set_trace()
     for p in bot.memory['players'].values():
         bot.say(p.name + ': ' + str(p.char.hp) + '/' + str(p.char.maxhp)
                 + 'hp, '
                 + str(p.char.mana) + 'mp. '
                 + ' You are a ' + p.char.classname() + '.')
+
+@sopel.module.commands('interact')
+def do_interact(bot, trigger):
+    if not isrunning(bot):
+        return
+    if not trigger.nick in bot.memory['players']:
+        return
+    # ok, find a thing.
+    # if there is only one feature, just interact with it, without bothering
+    # to check what the player typed
+    cell = bot.memory['map'].get_current_cell()
+    if len(cell.features) == 0:
+        bot.say('No features to check out. You pretend you were doing '
+                + 'something else, other than looking at the blank wall.')
+    elif len(cell.features) == 1:
+        cell.features[0].getEffect(bot)
+    else:
+        found = False
+        feature_names = []
+        for f in cell.features:
+            feature_names.append(f.getName())
+            if f.getName() == trigger.group(2):
+                f.getEffect(bot)
+                break
+        if not found:
+            bot.say('No feature named ' + trigger.group(2) + '.')
+            bot.say('Possible features: ' + ', '.join(feature_names) + '.')
+
