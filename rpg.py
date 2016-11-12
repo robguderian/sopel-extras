@@ -2,6 +2,7 @@ import sopel.module
 
 from threading import Timer
 import random
+import re
 
 '''
 RPG States
@@ -373,6 +374,125 @@ Possible monsters
 '''
 POSSIBLE_MONSTERS = [ogre, imp, troll, goblin]
 
+class end_boss(npc):
+    def do_turn(self, bot, occupants):
+        # choose random opponent, use base attack
+        to_attack = random.choice(occupants)
+        while not to_attack.player:
+            to_attack = random.choice(occupants)
+        if random.random() > 0.5:
+            the_attack = self.base_attack()
+            if to_attack.tryhit(the_attack):
+                bot.say(self.name + ' hit ' + to_attack.name + '!')
+                to_attack.hit(the_attack)
+            else:
+                bot.say(self.name + ' missed ' + to_attack.name + '!')
+        else:
+            the_attack = self.special_attack(bot)
+
+class greater_ogre(end_boss):
+    def load(self):
+        names = ['Zarg',
+                'Brirug',
+                'Urok',
+                'Blokurg',
+                'Erth']
+        self.name = random.choice(names) + ' the greater ogre'
+        self.hp = 15
+        self.mana = 0
+        self.ac = 10
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,8)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        bot.say('The ogre swings his massive tree-trunk like clubs in a '
+                + 'wide arc hoping to hit everyone in the whole team.')
+        battle = bot.memory['battle']
+        for f in battle.get_goodies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,4) - 1 )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+
+class griffon(end_boss):
+    def load(self):
+        names = [
+                'Priapus',
+                'Notus',
+                'Aether',
+                'Phantomwings',
+                'Mudbeak',
+                'Dwarftail',
+                'Solarnail',
+                'Selena',
+                'Furious',
+                'Saki']
+        self.name = random.choice(names) + ' the griffon'
+        self.hp = 15
+        self.mana = 0
+        self.ac = 10
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,8)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        bot.say(self.name + ' turns into a file state, burning everything '
+                + 'in the room.')
+        battle = bot.memory['battle']
+        for f in battle.get_goodies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,4) - 1 )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+
+class minotaur(end_boss):
+    def load(self):
+        names = [
+                'Stampy',
+                'Goebaran',
+                'Gragajan',
+                'Podkan',
+                'Kurfaruk',
+                'Kirfaruk',
+                'Goerus',
+                'Kirkun',
+                ]
+        self.name = random.choice(names) + ' the minotaur'
+        self.hp = 15
+        self.mana = 0
+        self.ac = 10
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,8)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        bot.say(self.name + ' puts his head down, pointing his horns '
+                + 'at the team and charges.')
+        battle = bot.memory['battle']
+        for f in battle.get_goodies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,4) - 1 )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+
+POSSIBLE_END_BOSSES = [griffon, greater_ogre, minotaur]
+
 
 '''
 Player class
@@ -414,7 +534,7 @@ class battle:
         self.next_turn(bot)
 
     def current_turn(self):
-        return self.combatant[self.curr_turn]
+        return self.combatants[self.curr_turn]
 
     def next_turn(self, bot):
         # check if it's over
@@ -426,6 +546,9 @@ class battle:
                 c = bot.memory['map'].get_current_cell()
                 c.occupants = []
                 bot.memory['gs'] = ROAMING
+                if c.end:
+                    bot.say('You win! The end!')
+                    bot.memory['rpgstate'] = RPG_OFF
             else:
                 bot.say('All the team has died... game over')
                 bot.memory['rpgstate'] = RPG_OFF
@@ -462,6 +585,13 @@ class battle:
             if not c.player:
                 baddies.append(c)
         return baddies
+
+    def get_goodies(self):
+        goodies = []
+        for c in self.combatants:
+            if c.player:
+                goodies.append(c)
+        return goodies
 
     def try_escape(self, player):
         # modify the difficulty based on the numnber of enemies
@@ -541,7 +671,10 @@ class Map():
             for j in range(0, m):
                 self.grid[i].append(MapCell(i, j))
         self.grid[start[0]][start[1]].set_start()
-        self.grid[end[0]][end[1]].end = True
+        endcell = self.grid[end[0]][end[1]]
+        endcell.end = True
+        endboss = random.choice(POSSIBLE_END_BOSSES)
+        endcell.occupants = [endboss()]
         # Make random door. Check if the map is possible
         # repeat until the map is possible
         while not self.check_possible():
@@ -879,7 +1012,7 @@ class BadFountain(Fountain):
         else:
             return 'A fountain sits undisturbed.'
 
-class LooseBrick(Fountain):
+class LooseBrick(Feature):
     def __init__(self):
         # choose a random item
         possible_items = POSSIBLE_ITEMS
@@ -893,8 +1026,35 @@ class LooseBrick(Fountain):
             player.items.append(item)
         else:
             bot.say('You find spiderwebs and dust')
+    def getName(self):
+        return 'a loose brick'
+    def getInfo(self):
+        return "A brick on the wall doesn't match the rest."
 
-POSSIBLE_FEATURES = [GoodFountain, BadFountain, LooseBrick]
+class Latrine(Feature):
+    def __init__(self):
+        # choose a random item
+        self.item = None
+        if random.random() > 0.98:
+            possible_items = POSSIBLE_ITEMS
+            self.item = random.choice(possible_items)
+
+    def getEffect(self, bot, player):
+        if self.item is not None:
+            # the current player gets the item
+            bot.say(player.name + ' gets a ' + self.item.getName() + '.')
+            player.items.append(item)
+        else:
+            bot.say('You find poop. What did you expect to find?')
+
+    def getName(self):
+        return 'a latrine'
+
+    def getInfo(self):
+        return "A latrine sits in the corner. It looks like it's been used "\
+                + "frequently, but never cleaned."
+
+POSSIBLE_FEATURES = [GoodFountain, BadFountain, LooseBrick, Latrine]
 
 class Item:
     def __init__(self):
@@ -937,9 +1097,19 @@ def startrpg(bot, trigger):
         # gs is game state
         bot.memory['gs'] = ROAMING
         # make an nxm grid. n and m are configurable (TODO)
-        bot.memory['x'] = 4
-        bot.memory['y'] = 10
-        bot.memory['map'] = Map(4, 10)
+        x = 4
+        y = 10
+        mapsizes = trigger.group(2)
+        m = None
+        if mapsizes is not None:
+            m = re.match('(\d+) (\d+)', mapsizes)
+            if m is not None:
+                x = int(m.group(1))
+                y = int(m.group(2))
+
+        bot.memory['x'] = x
+        bot.memory['y'] = y
+        bot.memory['map'] = Map(x, y)
         bot.say('Type .register to register for this game.')
         # end registration after a timeout (in seconds)
         t = Timer(20, registration_end, args=[bot])
@@ -1170,7 +1340,11 @@ def do_use(bot, trigger):
             found = True
             break
     if not found:
-        bot.say(trigger.nick + ' does not have a ' + trigger.group(2)
-                + '. Possibilities are ' + ', '.join(player.item_list())
-                + '.')
+        item_list = player.item_list()
+        if item_list is None:
+            bot.say(trigger.nick + ' has no items.')
+        else:
+            bot.say(trigger.nick + ' does not have a ' + trigger.group(2)
+                    + '. Possibilities are ' + ', '.join(player.item_list())
+                    + '.')
 
