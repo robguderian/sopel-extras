@@ -420,6 +420,42 @@ class greater_ogre(end_boss):
                 bot.say(self.name + ' hit ' + f.name + '!')
                 f.hit(att)
 
+class phoenix(end_boss):
+    def load(self):
+        names = [
+                'Rise',
+                'Eterna',
+                'Beam',
+                'Inferno',
+                'Luminos',
+                'Dawn',
+                'Torch',
+                'Shine',
+                'Zeal',
+                'Brilliancy']
+        self.name = random.choice(names) + ' the phoenix'
+        self.hp = 15
+        self.mana = 0
+        self.ac = 10
+
+    def base_attack(self):
+        # base attack, 1d20
+        att = random.randint(1,20)
+        # base damage, 1d4
+        dmg = random.randint(1,8)
+        return attack(att, dmg)
+
+    def special_attack(self, bot, target_str=None):
+        bot.say(self.name + ' turns into a fire state, burning everything '
+                + 'in the room.')
+        battle = bot.memory['battle']
+        for f in battle.get_goodies():
+            att = attack( random.randint(1,20) + 4,
+                          random.randint(1,4) - 1 )
+            if f.tryhit(att):
+                bot.say(self.name + ' hit ' + f.name + '!')
+                f.hit(att)
+
 class griffon(end_boss):
     def load(self):
         names = [
@@ -446,8 +482,8 @@ class griffon(end_boss):
         return attack(att, dmg)
 
     def special_attack(self, bot, target_str=None):
-        bot.say(self.name + ' turns into a file state, burning everything '
-                + 'in the room.')
+        bot.say(self.name + ' becomes airborne, flies at the team, slashing '
+                + 'its talons fiercely.')
         battle = bot.memory['battle']
         for f in battle.get_goodies():
             att = attack( random.randint(1,20) + 4,
