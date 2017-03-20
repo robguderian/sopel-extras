@@ -33,7 +33,7 @@ def do_notify(bot, trigger):
         words = trigger.group(2).split(' ')
         if words[0] != trigger.nick:
             notify(channel, words[0],
-                    trigger.group(1).replace(words[0], "", 1))
+                    trigger.group(2).replace(words[0], "", 1))
             bot.say('Added note for ' + words[0] + '.')
 
 @sopel.module.commands('notifyhelp')
