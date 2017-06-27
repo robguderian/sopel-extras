@@ -2,7 +2,7 @@ import sopel.module
 
 # Dicts
 NOTIFICATIONS={}
-CHANNELS={'#rwlgguns'}
+CHANNELS={'#rwlgguns', '#shadowwork'}
 
 
 def notify(channel, user, message):
