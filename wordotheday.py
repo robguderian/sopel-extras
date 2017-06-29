@@ -1,4 +1,6 @@
 import sopel
+
+import string
 import random
 from subprocess import check_output
 
@@ -7,19 +9,20 @@ wotd = 'butts'
 
 # TODO: return an exception
 def get_new_word():
-    with open("/usr/share/dict/web2a") as f:
+    with open("/usr/share/dict/web2") as f:
         # load the whole file
         lines = f.readlines()
-        random.choice(lines)
+        return random.choice(lines)
+
  
 
-@sopel.module.commands('.*')
+@sopel.module.rule('(.*)')
 def checkword(bot, trigger):
-    if trigger.group(2):
-        words = trigger.group(2).split()
+    if trigger.group(1):
+        words = trigger.group(1).split()
         # take punctuation off each word
-        cleaned = [x.translate(None, string.punctuation).lower() for x in words]
-        if woth in cleaned:
+        cleaned = [str(x).translate(None, string.punctuation).lower() for x in words]
+        if wotd in cleaned:
             bot.say("you win")
             bot.say(get_new_word())
 
