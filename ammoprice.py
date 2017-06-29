@@ -8,6 +8,7 @@ def convert_to_ammo(bot, trigger):
     ammo_prices = { ".223": 0.75,
                     "7.62x39": 0.18,
                     ".22": 0.13,
+                    ".22 subsonic": 0.35,
                     "7.62x54": 1.3,
                     "7.62x51": 1.4,
                     "12G Slugs": 2,
