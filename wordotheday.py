@@ -18,11 +18,21 @@ def setup(bot):
     reset(bot)
 
 def reset(bot):
+    broadcast_new_word(bot)
     bot.memory['wotd'] = get_new_word()
+    print bot.memory['wotd']
     bot.memory['wotd_timer'] = Timer(timer_time, lost_wotd, args=[bot])
 
+def broadcast_new_word(bot):
+    for c in bot.channels.keys():
+        bot.say('Generating new word of the day!', c)
+
+def broadcast_word(bot):
+    for c in bot.channels.keys():
+        bot.say('Word of the day was %s.'%bot.memory['wotd'], c)
+
 def lost_wotd(bot):
-    bot.say('Word of the day was %s.'%bot.memory['wotd'], '#shadowwork')
+    broadcast_word(bot)
     bot.memory['wotd'] = get_new_word()
     bot.memory['wotd_timer'] = Timer(timer_time, lost_wotd, args=[bot])
 
