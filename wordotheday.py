@@ -12,7 +12,8 @@ from bs4 import BeautifulSoup
 
 # cache of usable word list. 1 word per line.
 cache_dir = '/tmp/wotdcache'
-timer_time = 600
+# 1 day of seconds
+timer_time = 60 * 60 * 24
 
 def setup(bot):
     reset(bot)
@@ -20,8 +21,8 @@ def setup(bot):
 def reset(bot):
     broadcast_new_word(bot)
     bot.memory['wotd'] = get_new_word()
-    print bot.memory['wotd']
     bot.memory['wotd_timer'] = Timer(timer_time, lost_wotd, args=[bot])
+    bot.memory['wotd_timer'].start()
 
 def broadcast_new_word(bot):
     for c in bot.channels.keys():
@@ -33,8 +34,7 @@ def broadcast_word(bot):
 
 def lost_wotd(bot):
     broadcast_word(bot)
-    bot.memory['wotd'] = get_new_word()
-    bot.memory['wotd_timer'] = Timer(timer_time, lost_wotd, args=[bot])
+    reset(bot)
 
 def reload_cache():
     dictionary = load_dictionary()
@@ -87,6 +87,6 @@ def checkword(bot, trigger):
         # take punctuation off each word
         cleaned = [str(x).translate(None, string.punctuation).lower() for x in words]
         if bot.memory['wotd'] in cleaned:
-            bot.say("you win")
+            bot.say("You win! Word was %s!"%bot.memory['wotd'])
             bot.memory['wotd_timer'].cancel()
             reset(bot)
