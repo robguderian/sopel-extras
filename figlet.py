@@ -2,7 +2,7 @@ import sopel
 import random
 from subprocess import check_output
 
-@sopel.module.commands('fig')
+@sopel.module.commands('fig', 'figlet')
 def figleter(bot, trigger):
     fonts = ['banner', 'block', 'bubble', 'digital', 'lean', 'mini', 'script', 'shadow', 'slant', 'small', 'smscript', 'smshadow', 'smslant', 'standard']
     if trigger.group(2):
