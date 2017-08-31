@@ -83,7 +83,7 @@ def get_new_word():
 @sopel.module.rule('(.*)')
 def checkword(bot, trigger):
     if trigger.group(1):
-        words = trigger.group(1).split()
+        words = trigger.group(1).encode('ascii','ignore').split()
         # take punctuation off each word
         cleaned = [str(x).translate(None, string.punctuation).lower() for x in words]
         if bot.memory['wotd'] in cleaned:
