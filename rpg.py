@@ -19,6 +19,34 @@ ROAMING = 2
 
 
 '''
+Buffs and debuffs
+These can stack.
+'''
+
+class BaseBuff:
+    self.name = ""
+    self.melee_attack_mod = 0
+    self.magic_attack_mod = 0
+    self.melee_damage_mod = 0
+    self.magic_damage_mod = 0
+    self.melee_defense_mod = 0
+    self.magic_defense_mod = 0
+    # how long is this active for, in turns
+    self.usage = 4
+
+class Poison(BaseBuff):
+    def __init__(self):
+        self.name = "Poison"
+        self.melee_defense = -4
+        self.magic_defense = -4
+
+class Rage(BaseBuff):
+    def __init__(self):
+        self.name = "Rage"
+        self.melee_mod = 6
+
+
+'''
 attack object
 
 Attacks get rolled, the damage gets rolled immedately with it.
@@ -54,6 +82,7 @@ class base_class():
         self.player = False
 
         self.items = []
+        self.buffs = []
 
         self.load()
 
@@ -71,10 +100,11 @@ class base_class():
     TODO: Add attack type?
     '''
     def tryhit(self, attackobj):
-        return attackobj.attack >= self.ac
+        return (attackobj.attack + attackobj.getAttackMod() >=
+                self.ac + self.getDefenseMod())
 
     def hit(self, attackroll):
-        self.hp -= attackroll.dmg
+        self.hp -= (attackroll.dmg + self.getDamageMod())
 
     def roll_initiative(self):
         return random.randint(1,20) + self.initiative_mod
@@ -120,6 +150,39 @@ class base_class():
     '''
     def special_attack(self, bot, target_str=None):
         pass
+
+    def removeBuff(self, BuffClass):
+        for i in reversed(range(0, len(self.buffs))):
+            if type(self.buffs[i]) == BuffClass:
+                self.buffs.pop(i)
+
+    def getAttackMod(self, isMagic = False):
+        mod = 0
+        for buff in self.buffs:
+            if isMagic:
+                mod += buff.magic_attack_mod
+            else:
+                mod += buff.melee_attack_mod
+        return mod
+
+    def getDefenseMod(self, isMagic = False):
+        mod = 0
+        for buff in self.buffs:
+            if isMagic:
+                mod += buff.magic_defense_mod
+            else:
+                mod += buff.melee_defence_mod
+        return mod
+
+    def getDamageMod(self, isMagic = False):
+        mod = 0
+        for buff in self.buffs:
+            if isMagic:
+                mod += buff.magic_damage__mod
+            else:
+                mod += buff.melee_damage_mod
+        return mod
+
 
 
 class fighter_class(base_class):
@@ -1127,6 +1190,16 @@ class Potion(Item):
         bot.say(player.name + ' uses a potion and gets ' + str(self.fill_amt)
                 + 'hp.')
         player.addHP(self.fill_amt)
+
+class Pure(Item):
+    def __init__(self):
+        self.name = "Pure"
+
+    def use(self, bot, player):
+        bot.say(player.name + ' uses pure on the team, removing all poison.')
+        for p in bot.memory['players']:
+            c = bot.memory['players'][p].char
+            c.removeBuff(Poison)
 
 POSSIBLE_ITEMS = [Potion]
 
