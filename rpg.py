@@ -772,6 +772,9 @@ class Map():
     Try a move, don't move and print error on failure
     '''
     def try_move(self, bot, direction, describe = True):
+        if direction is None:
+            bot.say("Need a direction to move")
+            return False
         d = direction.lower()
         c = self.get_current_cell()
         moved = True
