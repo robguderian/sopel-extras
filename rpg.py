@@ -1042,7 +1042,7 @@ class BadFountain(Fountain):
                 amt = random.randint(1,6)
                 bot.say(p.name + ' loses ' + str(amt) + 'hp.')
                 p.char.subHP(amt, in_combat)
-                if p.hp < 0:
+                if p.char.hp < 0:
                     bot.say(p.name +' dies.')
 
     def getInfo(self):
