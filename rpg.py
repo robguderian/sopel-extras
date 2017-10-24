@@ -1053,13 +1053,16 @@ class LooseBrick(Feature):
         # choose a random item
         possible_items = POSSIBLE_ITEMS
         possible_items.append(None)
-        self.item = random.choice(possible_items)
+        chosenItem = random.choice(possible_items)
+        self.item = None
+        if chosenItem is not None:
+            self.item = chosenItem()
 
     def getEffect(self, bot, player):
         if self.item is not None:
             # the current player gets the item
             bot.say(player.name + ' gets a ' + self.item.getName() + '.')
-            player.items.append(item)
+            player.items.append(self.item)
         else:
             bot.say('You find spiderwebs and dust')
     def getName(self):
@@ -1073,13 +1076,16 @@ class Latrine(Feature):
         self.item = None
         if random.random() > 0.98:
             possible_items = POSSIBLE_ITEMS
-            self.item = random.choice(possible_items)
+            chosenItem = random.choice(possible_items)
+            self.item = None
+            if chosenItem is not None:
+                self.item = chosenItem()
 
     def getEffect(self, bot, player):
         if self.item is not None:
             # the current player gets the item
             bot.say(player.name + ' gets a ' + self.item.getName() + '.')
-            player.items.append(item)
+            player.items.append(self.item)
         else:
             bot.say('You find poop. What did you expect to find?')
 
