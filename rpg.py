@@ -24,24 +24,27 @@ These can stack.
 '''
 
 class BaseBuff:
-    self.name = ""
-    self.melee_attack_mod = 0
-    self.magic_attack_mod = 0
-    self.melee_damage_mod = 0
-    self.magic_damage_mod = 0
-    self.melee_defense_mod = 0
-    self.magic_defense_mod = 0
-    # how long is this active for, in turns
-    self.usage = 4
+    def __init__(self):
+        self.name = ""
+        self.melee_attack_mod = 0
+        self.magic_attack_mod = 0
+        self.melee_damage_mod = 0
+        self.magic_damage_mod = 0
+        self.melee_defense_mod = 0
+        self.magic_defense_mod = 0
+        # how long is this active for, in turns
+        self.usage = 4
 
 class Poison(BaseBuff):
     def __init__(self):
+        BaseBuff.__init__(self)
         self.name = "Poison"
         self.melee_defense = -4
         self.magic_defense = -4
 
 class Rage(BaseBuff):
     def __init__(self):
+        BaseBuff.__init__(self)
         self.name = "Rage"
         self.melee_mod = 6
 
@@ -53,9 +56,9 @@ Attacks get rolled, the damage gets rolled immedately with it.
 Future: we could pass damage as a closure
 '''
 class attack:
-    def __init__(self, attack, dmg):
-        self.attack = attack
-        self.dmg = dmg
+    def __init__(self, attack, dmg, attackmod = 0, damagemod = 0):
+        self.attack = attack + attackmod
+        self.dmg = dmg + damagemod
         # TODO
         # self.type =
 
@@ -100,11 +103,12 @@ class base_class():
     TODO: Add attack type?
     '''
     def tryhit(self, attackobj):
-        return (attackobj.attack + attackobj.getAttackMod() >=
+        return (attackobj.attack + self.getAttackMod() >=
                 self.ac + self.getDefenseMod())
 
     def hit(self, attackroll):
         self.hp -= (attackroll.dmg + self.getDamageMod())
+        return attackroll.dmg + self.getDamageMod()
 
     def roll_initiative(self):
         return random.randint(1,20) + self.initiative_mod
@@ -141,7 +145,7 @@ class base_class():
         att = random.randint(1,20)
         # base damage, 1d4
         dmg = random.randint(1,4)
-        return attack(att, dmg)
+        return attack(att, dmg, self.getAttackMod(), self.getDamageMod())
 
     '''
     do a special attack
@@ -200,17 +204,21 @@ class fighter_class(base_class):
         att = random.randint(1,20) + 2
         # base damage, 1d4
         dmg = random.randint(1,6)
-        return attack(att, dmg)
+        return attack(att, dmg,
+                          self.getAttackMod(),
+                          self.getDamageMod() )
 
     def special_attack(self, bot, target_str=None):
         bot.say(self.name + " charges at the monsters, slashing wildly.")
         battle = bot.memory['battle']
         for f in battle.get_baddies():
             att = attack( random.randint(1,20) + 4,
-                          random.randint(1,4) + 1 )
+                          random.randint(1,4) + 1,
+                          self.getAttackMod(),
+                          self.getDamageMod() )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
-                f.hit(att)
+                d = f.hit(att)
+                bot.say(self.name + ' hit ' + f.name + ' for ' + str(d) + '!')
         battle.clean_list(bot)
         battle.next_turn(bot)
 
@@ -232,8 +240,9 @@ class healer_class(base_class):
         att = random.randint(1,20) + 0
         # base damage, 1d4
         dmg = random.randint(1,4)
-        return attack(att, dmg)
-
+        return attack(att, dmg,
+                          self.getAttackMod(),
+                          self.getDamageMod() )
     def special_attack(self, bot, target_str=None):
         # TODO - add targeted healing
         bot.say(self.name + " heals the team.")
@@ -248,6 +257,7 @@ class healer_class(base_class):
     @classmethod
     def classname(cls):
         return 'Healer'
+
 class mage_class(base_class):
     def load(self):
         self.maxhp = 40
@@ -263,17 +273,21 @@ class mage_class(base_class):
         att = random.randint(1,20) + 5
         # base damage, 1d4
         dmg = random.randint(1,10)
-        return attack(att, dmg)
+        return attack(att, dmg,
+                          self.getAttackMod(),
+                          self.getDamageMod() )
 
     def special_attack(self, bot, target_str=None):
         bot.say(self.name + " calls fire from the floor.")
         battle = bot.memory['battle']
         for f in battle.get_baddies():
             att = attack( random.randint(1,20) + 4,
-                          random.randint(1,8) + 1 )
+                          random.randint(1,8) + 1 ,
+                          self.getAttackMod(),
+                          self.getDamageMod() )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
-                f.hit(att)
+                d = f.hit(att)
+                bot.say(self.name + ' hit ' + f.name + ' for ' + str(d) + '!')
         battle.clean_list(bot)
         battle.next_turn(bot)
 
@@ -292,7 +306,8 @@ class npc(base_class):
             to_attack = random.choice(occupants)
         the_attack = self.base_attack()
         if to_attack.tryhit(the_attack):
-            bot.say(self.name + ' hit ' + to_attack.name + '!')
+            bot.say(self.name + ' hit ' + to_attack.name + ' for ' +
+                    str(the_attack.dmg) + ' hp!')
             to_attack.hit(the_attack)
         else:
             bot.say(self.name + ' missed ' + to_attack.name + '!')
@@ -446,7 +461,8 @@ class end_boss(npc):
         if random.random() > 0.5:
             the_attack = self.base_attack()
             if to_attack.tryhit(the_attack):
-                bot.say(self.name + ' hit ' + to_attack.name + '!')
+                bot.say(self.name + ' hit ' + to_attack.name +
+                        ' for ' + str(the_attack.dmg) + '!')
                 to_attack.hit(the_attack)
             else:
                 bot.say(self.name + ' missed ' + to_attack.name + '!')
@@ -480,7 +496,8 @@ class greater_ogre(end_boss):
             att = attack( random.randint(1,20) + 4,
                           random.randint(1,4) - 1 )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
+                bot.say(self.name + ' hit ' + f.name +
+                        ' for ' + str(the_attack.dmg) + '!')
                 f.hit(att)
 
 class phoenix(end_boss):
@@ -516,7 +533,8 @@ class phoenix(end_boss):
             att = attack( random.randint(1,20) + 4,
                           random.randint(1,4) - 1 )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
+                bot.say(self.name + ' hit ' + f.name +
+                        ' for ' + str(the_attack.dmg) + '!')
                 f.hit(att)
 
 class griffon(end_boss):
@@ -552,7 +570,8 @@ class griffon(end_boss):
             att = attack( random.randint(1,20) + 4,
                           random.randint(1,4) - 1 )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
+                bot.say(self.name + ' hit ' + f.name +
+                        ' for ' + str(att.dmg) + '!')
                 f.hit(att)
 
 class minotaur(end_boss):
@@ -587,7 +606,8 @@ class minotaur(end_boss):
             att = attack( random.randint(1,20) + 4,
                           random.randint(1,4) - 1 )
             if f.tryhit(att):
-                bot.say(self.name + ' hit ' + f.name + '!')
+                bot.say(self.name + ' hit ' + f.name +
+                        ' for ' + str(the_attack.dmg) + '!')
                 f.hit(att)
 
 POSSIBLE_END_BOSSES = [griffon, greater_ogre, minotaur]
@@ -1201,7 +1221,7 @@ class Pure(Item):
             c = bot.memory['players'][p].char
             c.removeBuff(Poison)
 
-POSSIBLE_ITEMS = [Potion]
+POSSIBLE_ITEMS = [Potion, Pure]
 
 @sopel.module.commands('startrpg')
 def startrpg(bot, trigger):
@@ -1373,7 +1393,8 @@ def do_attack(bot, trigger):
                 # TODO - be able to choose attackee
                 to_attack = random.choice(c.occupants)
             if to_attack.tryhit(att):
-                bot.say(trigger.nick + ' hit ' + to_attack.name + '.')
+                bot.say(trigger.nick + ' hit ' + to_attack.name + ' for ' +
+                        str(att.dmg) + ' hp.')
                 to_attack.hit(att)
             else:
                 bot.say(trigger.nick + ' missed ' + to_attack.name + '.')
@@ -1386,7 +1407,7 @@ def do_special(bot, trigger):
         and bot.memory['gs'] == IN_BATTLE
         and trigger.nick in bot.memory['players']):
         # now check that it is the user's turn
-            if bot.memory['battle'].is_turn(trigger.nick):
+            ef bot.memory['battle'].is_turn(trigger.nick):
                 # pass in the bot. From there we can ge
                 # all the values we need
                 if len(trigger.groups()) >= 2:
@@ -1412,6 +1433,9 @@ def do_status(bot, trigger):
     if bot.memory['gs'] == IN_BATTLE:
         bot.say('You are currently in battle, current turn: '
                 + bot.memory['battle'].current_turn().name + '.')
+        bot.say("You are battling:")
+        for baddie in bot.memory['battle'].get_baddies():
+            bot.say(baddie.name + ": " + str(baddie.hp) + ' hp.')
 
 @sopel.module.commands('interact')
 def do_interact(bot, trigger):

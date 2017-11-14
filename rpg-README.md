@@ -68,6 +68,7 @@ Dictionary:
 - .interact [item] - interact with an item you're holding, or that is in the
   room. This could have positive or negative effects!
 - .inventory - show your inventory.
+- .info - show the room information again
 - .item [itemname] - use an item. If the item needs a target/destination, you
    will be prompted.
 - .bail - quit the team. This also happens if you leave the chat room. Game

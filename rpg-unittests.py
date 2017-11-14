@@ -17,7 +17,7 @@ class BotStub():
     def say(self, st):
         self.said = self.said + st
 
-    
+
 
 class TestItems(unittest.TestCase):
 
@@ -36,7 +36,7 @@ class TestBrick(unittest.TestCase):
 
         b.getEffect(bot, p)
         self.assertEqual(bot.said, "mage gets a potion.")
-  
+
 
 if __name__ == '__main__':
     unittest.main()
