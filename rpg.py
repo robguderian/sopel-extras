@@ -1407,7 +1407,7 @@ def do_special(bot, trigger):
         and bot.memory['gs'] == IN_BATTLE
         and trigger.nick in bot.memory['players']):
         # now check that it is the user's turn
-            ef bot.memory['battle'].is_turn(trigger.nick):
+            if bot.memory['battle'].is_turn(trigger.nick):
                 # pass in the bot. From there we can ge
                 # all the values we need
                 if len(trigger.groups()) >= 2:
