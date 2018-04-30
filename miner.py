@@ -4,8 +4,9 @@ import json
 
 from threading import Timer
 
-timer_time = 60* 60
+timer_time = 60* 60 * 6
 URL = "https://api.nanopool.org/v1/eth/user/0xfc02b7ef373ca35f5e67c9267d8dc687c3b01124"
+TRADEURL = "https://api.quadrigacx.com/v2/ticker?book=eth_cad"
 
 def setup(bot):
     bot.memory['mine_timer'] = Timer(timer_time, get_status, args=[bot])
@@ -20,11 +21,17 @@ def say_status(bot):
   try:
     req = requests.get(URL)
     j = json.loads(req.text)
-    bot.say("Current {:.2f}, 1 hour: {:.2f}, 3 hour: {:.2f}, balance: {:.4f}".format(
+    req = requests.get(TRADEURL)
+    t = json.loads(req.text)
+    value = float(t['ask'])
+    cads = value * float(j['data']['balance'])
+    bot.say("Curr {:.2f}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
       float(j['data']['hashrate']),
-      float(j['data']['avgHashrate']['h1']),
       float(j['data']['avgHashrate']['h3']),
-      float(j['data']['balance'])), '#farmlink')
+      float(j['data']['avgHashrate']['h12']),
+      float(j['data']['balance']),
+      cads),
+      '#farmlink')
   except:
     bot.say("derp", "#farmlink")
 
