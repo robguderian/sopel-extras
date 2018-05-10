@@ -25,8 +25,8 @@ def say_status(bot):
     t = json.loads(req.text)
     value = float(t['ask'])
     cads = value * float(j['data']['balance'])
-    bot.say("Curr {:.2f}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
-      float(j['data']['hashrate']),
+    bot.say("Curr {:d}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
+      int(j['data']['hashrate']),
       float(j['data']['avgHashrate']['h3']),
       float(j['data']['avgHashrate']['h12']),
       float(j['data']['balance']),
