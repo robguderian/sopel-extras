@@ -32,8 +32,12 @@ def say_status(bot):
       float(j['data']['balance']),
       cads),
       '#farmlink')
-  except:
+  except ValueError as e:
+      bot.say("Malformed JSON for miner check. API down?", "#farmlink")
+  except Exception as e:
     bot.say("derp", "#farmlink")
+    print(e)
+    print(sys.exc_info()[0])
 
 
 
