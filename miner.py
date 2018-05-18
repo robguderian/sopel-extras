@@ -1,6 +1,7 @@
 import sopel
 import requests
 import json
+import sys
 
 from threading import Timer
 
@@ -23,10 +24,11 @@ def say_status(bot):
     j = json.loads(req.text)
     req = requests.get(TRADEURL)
     t = json.loads(req.text)
+    print(j)
     value = float(t['ask'])
     cads = value * float(j['data']['balance'])
-    bot.say("Curr {:d}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
-      int(j['data']['hashrate']),
+    bot.say("Curr {:.1f}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
+      float(j['data']['hashrate']),
       float(j['data']['avgHashrate']['h3']),
       float(j['data']['avgHashrate']['h12']),
       float(j['data']['balance']),
@@ -34,6 +36,9 @@ def say_status(bot):
       '#farmlink')
   except ValueError as e:
       bot.say("Malformed JSON for miner check. API down?", "#farmlink")
+      print("error with printing miner status")
+      print(e)
+      print(sys.exc_info()[0])
   except Exception as e:
     bot.say("derp", "#farmlink")
     print(e)
