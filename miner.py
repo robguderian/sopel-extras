@@ -2,6 +2,7 @@ import sopel
 import requests
 import json
 import sys
+import time
 
 from threading import Timer
 
@@ -14,6 +15,7 @@ def setup(bot):
     bot.memory['mine_timer'].start()
 
 def get_status(bot):
+    time.sleep(30)
     say_status(bot)
     bot.memory['mine_timer'] = Timer(timer_time, get_status, args=[bot])
     bot.memory['mine_timer'].start()
@@ -21,8 +23,12 @@ def get_status(bot):
 def say_status(bot):
   try:
     req = requests.get(URL)
+    print "nanopool"
+    print req.text
     j = json.loads(req.text)
     req = requests.get(TRADEURL)
+    print "trade"
+    print req.text
     t = json.loads(req.text)
     print(j)
     value = float(t['ask'])
