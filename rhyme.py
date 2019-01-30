@@ -19,5 +19,5 @@ def checkword(bot, trigger):
         j = json.loads(r.read())
         if len(j) > 0:
             rhyme = random.choice(j)
-            bot.say(rhyme['word'])
+            bot.say("The Reimer Rhymer says " + rhyme['word'])
 

@@ -31,9 +31,14 @@ def say_status(bot):
     print req.text
     t = json.loads(req.text)
     print(j)
-    value = float(t['ask'])
-    cads = value * float(j['data']['balance'])
-    bot.say("Curr {:.1f}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${:.2f}".format(
+    cads = "Unavailable"
+    try:
+        value = float(t['ask'])
+        cadsnum = value * float(j['data']['balance'])
+        cads = '{:.2f}'.format(cadsnum)
+    except:
+        pass
+    bot.say("Curr {:.1f}, 3 hr: {:.2f}, 12 hr: {:.2f}, bal: {:.4f}/C${}".format(
       float(j['data']['hashrate']),
       float(j['data']['avgHashrate']['h3']),
       float(j['data']['avgHashrate']['h12']),
