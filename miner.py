@@ -8,7 +8,8 @@ from threading import Timer
 
 timer_time = 60* 60 * 6
 URL = "https://api.nanopool.org/v1/eth/user/0xfc02b7ef373ca35f5e67c9267d8dc687c3b01124"
-TRADEURL = "https://api.quadrigacx.com/v2/ticker?book=eth_cad"
+#TRADEURL = "https://api.quadrigacx.com/v2/ticker?book=eth_cad"
+TRADEURL = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=cad"
 
 def setup(bot):
     bot.memory['mine_timer'] = Timer(timer_time, get_status, args=[bot])
@@ -33,7 +34,7 @@ def say_status(bot):
     print(j)
     cads = "Unavailable"
     try:
-        value = float(t['ask'])
+        value = float(t['ethereum']['cad'])
         cadsnum = value * float(j['data']['balance'])
         cads = '{:.2f}'.format(cadsnum)
     except:
