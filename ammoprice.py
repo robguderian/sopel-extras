@@ -12,7 +12,10 @@ def convert_to_ammo(bot, trigger):
                     "7.62x54": 1.3,
                     "7.62x51": 1.4,
                     "12G Slugs": 2,
-                    "12G Target Loads": 0.36
+                    "12G Target Loads": 0.36,
+                    "9mm": 0.25,
+                    ".357": 0.62,
+                    "38 Special": 0.46
                   }
     caliber = random.choice(ammo_prices.keys())
     as_int = int(trigger.group(1))
