@@ -191,11 +191,12 @@ class Level3(BaseLevel):
 
 class Level4(BaseLevel):
     def __init__(self):
-        self.nut = [Component('8','',50)]
+        self.nut = [Component('8','',20)]
         self.nut.append(Component(':','WINTERIZED',1))
         self.nut.append(Component('o','ARMSTRONG\'D',1))
         self.nut.append(Component('.','WINTERIZE\'D ARMSTRONG\'D',1))
         self.nut.append(Component('B','GRAPEFRUITS',1))
+        self.nut.append(Component('(\/)!_!(\/)','CRABS',1))
         self.nut.append(Component('(_)_)','GRAPEFRUITS',1))
         self.nut.append(Component(' ','VASECTOMY\'D',1))
         self.nut.append(Component('(___)___)','ELEPHANTIASIS',1))
@@ -208,14 +209,15 @@ class Level4(BaseLevel):
         self.fore = [Component('','',100)]
         self.fore.append(Component(')','CLIPPED',1))
         self.fore.append(Component('|||','TURTLENECK',1))
-        self.tip = [Component('D','',1000)]
+        self.tip = [Component('D','',100)]
         self.tip.append(Component('-','UNICORN',1))
         self.tip.append(Component('G','PIERCED',5))
         self.tip.append(Component('Q','LEAKER',5))
         self.tip.append(Component('3','DICKBUTT',5))
         self.tip.append(Component('<','SPLIT',1))
         self.tip.append(Component(' D','SAUCER SEPARATION',3))
-        self.jizz = [Component('','',200)]
+        self.tip.append(Component('','STUMP',3))
+        self.jizz = [Component('','',20)]
         self.jizz.append(Component('~','',10))
         self.jizz.append(Component('~','SCHNOODLE',1))
         self.jizz.append(Component(' ~','SPUTTER',1))
