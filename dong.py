@@ -163,7 +163,10 @@ class Level2(BaseLevel):
         d = DongObject(self.wnut, self.wshaft, self.wfore, self.wtip,
                 self.wjizz)
         if d.shaft_size >= 12:
-            d.add_special('MASTER CYLINDER')
+            if random.random() < 0.7:
+                d.add_special('BIG CHUNGUS')
+            else:
+                d.add_special('MASTER CYLINDER')
         elif d.shaft_size == 1:
             d.add_special('SHORTSTACK')
         return d
@@ -182,7 +185,10 @@ class Level3(BaseLevel):
         d = DongObject(self.wnut, self.wshaft, self.wfore, self.wtip,
                 self.wjizz)
         if d.shaft_size >= 12:
-            d.add_special('MASTER CYLINDER')
+            if random.random() < 0.7:
+                d.add_special('BIG CHUNGUS')
+            else:
+                d.add_special('MASTER CYLINDER')
         elif d.shaft_size == 1:
             d.add_special('SHORTSTACK')
         elif d.shaft_size == 0:
@@ -200,21 +206,29 @@ class Level4(BaseLevel):
         self.nut.append(Component('(_)_)','GRAPEFRUITS',1))
         self.nut.append(Component(' ','VASECTOMY\'D',1))
         self.nut.append(Component('(___)___)','ELEPHANTIASIS',1))
+        self.nut.append(Component('<>','CUBISM',1))
+        self.nut.append(Component('3','SHRINKAGE',1))
+        self.nut.append(Component('|','DEFLATED',1))
         self.shaft = [Component('=','',50)]
         self.shaft.append(Component('-','NOODLE',1))
         self.shaft.append(Component('~','COMPRESSION',1))
         self.shaft.append(Component('/\\','ACCORDION',1))
         self.shaft.append(Component('^','STUDDED',1))
         self.shaft.append(Component(')','RIBBED',1))
+        self.shaft.append(Component('m','GRIP',1))
+        self.shaft.append(Component('/','SPIRAL DUCK DICK',1))
         self.fore = [Component('','',100)]
         self.fore.append(Component(')','CLIPPED',1))
         self.fore.append(Component('|||','TURTLENECK',1))
+        self.fore.append(Component('H','TURTLENECK',1))
+        self.fore.append(Component('%','PUSS',1))
         self.tip = [Component('D','',100)]
         self.tip.append(Component('-','UNICORN',1))
         self.tip.append(Component('G','PIERCED',5))
         self.tip.append(Component('Q','LEAKER',5))
         self.tip.append(Component('3','DICKBUTT',5))
         self.tip.append(Component('<','SPLIT',1))
+        self.tip.append(Component('>','POKER',1))
         self.tip.append(Component(' D','SAUCER SEPARATION',3))
         self.tip.append(Component('','STUMP',3))
         self.jizz = [Component('','',20)]
@@ -232,7 +246,10 @@ class Level4(BaseLevel):
         if d.jizz_size >= 6:
             d.add_special('BIG SHOOTER')
         if d.shaft_size >= 12:
-            d.add_special('MASTER CYLINDER')
+            if random.random() < 0.5:
+                d.add_special('BIG CHUNGUS')
+            else:
+                d.add_special('MASTER CYLINDER')
         elif d.shaft_size == 1:
             d.add_special('SHORTSTACK')
         elif d.shaft_size == 0:
